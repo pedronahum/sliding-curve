@@ -33,20 +33,41 @@ class Fit(NamedTuple):
 
 def _solve(model, free, resid_fn):
     """Bounded least squares on a deterministic residual function of the
-    free parameters (a jax function of a parameter vector)."""
-    resid = jax.jit(resid_fn)
-    jac = jax.jit(jax.jacfwd(resid_fn))
+    free parameters (a jax function of a parameter vector).
+
+    Residual and Jacobian come from one jitted forward-mode pass (the primal
+    is computed alongside the tangents anyway), cached on the parameter
+    vector, since least_squares asks for both at each accepted point.
+
+    The quadratic-exponential variance scheme switches branch as eta moves,
+    so at fixed random numbers its samples are not differentiable in eta;
+    with eta free and that scheme, finite differences are used instead.
+    The "lognormal" scheme is smooth in eta and keeps autodiff."""
+    ad = "eta" not in free or model.variance_scheme == "lognormal"
     x0 = np.array([getattr(model, n) for n in free], dtype=float)
     lo, hi = (np.array([_BOUNDS[n][k] for n in free]) for k in (0, 1))
-    # The quadratic-exponential scheme switches branch as eta moves, so at
-    # fixed random numbers its samples are not differentiable in eta: fall
-    # back to finite differences then. The "lognormal" scheme is smooth in
-    # eta and keeps autodiff.
-    ad = "eta" not in free or model.variance_scheme == "lognormal"
-    return least_squares(lambda th: np.asarray(resid(jnp.asarray(th))), x0,
-                         jac=(lambda th: np.asarray(jac(jnp.asarray(th)))) if ad else "2-point",
-                         diff_step=None if ad else 5e-2,
-                         bounds=(lo, hi), x_scale=[_SCALE[n] for n in free], xtol=1e-10)
+    kw = dict(bounds=(lo, hi), x_scale=[_SCALE[n] for n in free], xtol=1e-10)
+    if not ad:
+        resid = jax.jit(resid_fn)
+        return least_squares(lambda th: np.asarray(resid(jnp.asarray(th))), x0, jac="2-point",
+                             diff_step=5e-2, **kw)
+
+    def with_aux(th):
+        r = resid_fn(th)
+        return r, r
+
+    val_jac = jax.jit(jax.jacfwd(with_aux, has_aux=True))
+    cache = {}
+
+    def both(th):
+        key = th.tobytes()
+        if key not in cache:
+            cache.clear()
+            J, r = val_jac(jnp.asarray(th))
+            cache[key] = (np.asarray(r), np.asarray(J))
+        return cache[key]
+
+    return least_squares(lambda th: both(th)[0], x0, jac=lambda th: both(th)[1], **kw)
 
 
 def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sigma", "b"),
@@ -86,8 +107,9 @@ def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sig
         return 1e4 * w * (p - target) / vega
 
     sol = _solve(model, free, resid)
+    final = jax.jit(lambda th: priced(model._replace(**{n: th[i] for i, n in enumerate(free)})))
+    p, se, k, _, vega = final(jnp.asarray(sol.x))
     model = model._replace(**{n: float(v) for n, v in zip(free, sol.x)})
-    p, se, k, _, vega = priced(model)
     model_vols = bl.implied_normal_vol(np.asarray(p), 0.0, np.asarray(k), expiry)
     return Fit(model, 1e4 * (model_vols - vols), model_vols, 1e4 * np.asarray(se / vega),
                bool(sol.success))
@@ -116,8 +138,8 @@ def calibrate(model: Model, curve, quotes, free: Sequence[str] = ("sigma",),
         return swaption_prices(m, curve, swp, strikes, scaling(m), key, n_paths, steps_per_year)
 
     sol = _solve(model, free, lambda th: 1e4 * (price(th)[0] - target) / vega_j)
+    p, se = jax.jit(price)(jnp.asarray(sol.x))
     fitted = model._replace(**{n: float(v) for n, v in zip(free, sol.x)})
-    p, se = swaption_prices(fitted, curve, swp, strikes, scaling(fitted), key, n_paths, steps_per_year)
     vols = bl.implied_normal_vol(np.asarray(p) / quotes.annuity, quotes.forward,
                                  quotes.strikes, swp.expiry)
     return Fit(fitted, 1e4 * (vols - quotes.normal_vols), vols,

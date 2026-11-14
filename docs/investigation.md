@@ -565,6 +565,60 @@ Both stop on the same valley (A7), with errors within 0.1bp of each other.
 
 ---
 
+## B2. Calibration speed
+
+**Status: fixed.** The (sigma, b) skew fit of Section 9.4 (32,768 paths,
+24 steps a year) went from 56.7s to 21.4s on one core with identical results
+(sigma 1.1940%, b 0.3529 to every printed digit), and to 3.6s with paths
+split over 16 cores.
+
+*Profile* (`experiments/b2_profile.py`, before the changes):
+
+| | calls | time |
+|---|---|---|
+| residual (jitted) | 17 | 2.8s first (compile), then 0.99s each |
+| Jacobian (separately jitted forward mode) | 14 | 3.7s first, then 1.12s each |
+| everything else | | **19.8s** |
+
+The "everything else" was almost all one call: the final evaluation after
+the fit ran outside `jit`, and the first eager evaluation of the volatility
+bootstrap in a process costs 17.3s of one-off compilation of small
+operations (0.12s the second time).
+
+*Changes*, each measured:
+
+| change | fit time | result |
+|---|---|---|
+| before | 56.7s | 1.1940%, 0.3529 |
+| final evaluation jitted | 43.0s | same |
+| residual and Jacobian from one cached forward-mode pass (least_squares asks for both at each accepted point; the tangent pass computes the primal anyway) | 21.4s (with the jitted final evaluation) | same |
+| paths split across 16 host devices (`pricing.set_path_devices`) | **3.6s** | 1.1881%, 0.3593: other random numbers, within the fit's seed spread (0.0095%, 0.0060) |
+
+A first fused version computed the residual twice inside the pass, and XLA
+did not merge the two scans (2.1s per call); computing it once fixed that.
+The bootstrap itself was vectorised as part of A2 (it telescopes; identical
+to 1e-12), which made monthly grids affordable.
+
+*Path splitting.* JAX runs these scans on one CPU core. Starting Python with
+`XLA_FLAGS=--xla_force_host_platform_device_count=<n>` and calling
+`pricing.set_path_devices(n)` splits the paths of every pricing simulation
+across n devices with `shard_map`, one key per device, reassembled so that
+path i and path i + N/2 stay antithetic partners. Simulation time for
+65,536 paths x 480 steps (`experiments/b2_sharding_probe.py`):
+
+| devices | 1 | 4 | 8 | 16 |
+|---|---|---|---|---|
+| seconds | 2.10 | 0.52 | 0.35 | 0.20 |
+
+It is opt-in: results then depend on the device count (within Monte-Carlo
+error), so the default is unchanged. `tests/test_path_sharding.py` runs four
+devices in a subprocess and checks the antithetic alignment and agreement
+within Monte-Carlo error. Timings were taken while another user's GPU
+inference server shared the machine's memory bandwidth; ratios are more
+reliable than absolute times.
+
+---
+
 ## B4. Monte-Carlo noise: variance reduction
 
 **Status: fixed.** `yield_option_prices(..., control_variate=True)` (and

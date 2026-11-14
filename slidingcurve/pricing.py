@@ -54,6 +54,25 @@ def bond(curve, kappa, T, M, x, y):
     return curve.discount(M) / curve.discount(T) * jnp.exp(-g * x - 0.5 * g * g * y)
 
 
+_PATH_DEVICES = 1
+
+
+def set_path_devices(n: int = None):
+    """Split the paths of every pricing simulation across n devices (all
+    available ones if n is None; 1 switches it off).
+
+    On a CPU, JAX sees one device unless told otherwise; start Python with
+    XLA_FLAGS=--xla_force_host_platform_device_count=<cores> to get one per
+    core. Each device draws its own random numbers (keys split from the
+    caller's), so results change within Monte-Carlo error, but are fixed for
+    a given key and device count; antithetic pairs are kept aligned (path i
+    and path i + n_paths/2). Returns the previous setting."""
+    global _PATH_DEVICES
+    prev = _PATH_DEVICES
+    _PATH_DEVICES = jax.device_count() if n is None else int(n)
+    return prev
+
+
 def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
                       steps_per_year=24, measure_maturity=None, gaussian_twin=False):
     """State (x, y) at `expiry` under the forward measure of `measure_maturity`
@@ -66,7 +85,49 @@ def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
     of the b = 0, eta = 0 model with the same sigma, driven by the same
     normals, and the exact mean and variance of x_g under this discrete
     scheme (a linear Gaussian recursion), for use as a control variate.
+
+    Paths are split across devices if set_path_devices was called.
     """
+    if _PATH_DEVICES > 1:
+        return _sharded(_simulate_terminal_one, model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
+                        measure_maturity, gaussian_twin)
+    return _simulate_terminal_one(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
+                                  measure_maturity, gaussian_twin)
+
+
+def _sharded(fn, model, curve, expiry, ybar_fn, key, n_paths, steps_per_year, measure_maturity, twin):
+    """Run fn on n_paths / d paths per device and reassemble [first halves, second halves]."""
+    import inspect
+    import numpy as _np
+    from jax.sharding import Mesh, PartitionSpec as P
+    try:
+        from jax import shard_map
+    except ImportError:                                        # older jax
+        from jax.experimental.shard_map import shard_map
+    d = _PATH_DEVICES
+    if n_paths % (2 * d):
+        raise ValueError(f"n_paths = {n_paths} must be a multiple of 2 x {d} devices")
+    mesh = Mesh(_np.array(jax.devices()[:d]), ("paths",))
+    nocheck = {"check_vma": False} if "check_vma" in inspect.signature(shard_map).parameters else {"check_rep": False}
+
+    def local(k):
+        out = fn(model, curve, expiry, ybar_fn, k[0], n_paths // d, steps_per_year, measure_maturity, twin)
+        return jax.tree_util.tree_map(lambda a: a[None], out)
+
+    out = shard_map(local, mesh=mesh, in_specs=P("paths"), out_specs=P("paths"), **nocheck)(
+        jax.random.split(key, d))
+
+    def merge(a):
+        if a.ndim == 1:                                        # per-device scalars (twin moments): identical
+            return a[0]
+        h = a.shape[1] // 2
+        return a.reshape(d, 2, h).transpose(1, 0, 2).reshape(-1)
+    return jax.tree_util.tree_map(merge, out)
+
+
+def _simulate_terminal_one(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
+                           steps_per_year=24, measure_maturity=None, gaussian_twin=False):
+    """See simulate_terminal."""
     if gaussian_twin:
         return _simulate_terminal_twin(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
                                        measure_maturity)

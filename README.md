@@ -274,6 +274,12 @@ clarify them:
 
 ## Quick start
 
+Monte-Carlo pricing can use every CPU core: start Python with
+`XLA_FLAGS=--xla_force_host_platform_device_count=16` (or your core count)
+and call `slidingcurve.pricing.set_path_devices()`. A (sigma, b) smile fit
+then takes about 4s instead of 21s (B2); results change within Monte-Carlo
+error, since each device draws its own random numbers.
+
 ```bash
 pip install -e ".[dev]"
 pytest                                   # 57 tests, about three minutes on CPU
