@@ -43,18 +43,22 @@ def _solve(model, free, resid_fn):
     ad = "eta" not in free
     return least_squares(lambda th: np.asarray(resid(jnp.asarray(th))), x0,
                          jac=(lambda th: np.asarray(jac(jnp.asarray(th)))) if ad else "2-point",
-                         diff_step=None if ad else 1e-2,
+                         diff_step=None if ad else 5e-2,
                          bounds=(lo, hi), x_scale=[_SCALE[n] for n in free], xtol=1e-10)
 
 
 def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sigma", "b"),
                           weights=None, key=None, n_paths=2**15, steps_per_year=24,
-                          passes=2, bootstrap_expiries=None) -> Fit:
+                          bootstrap_expiries=None) -> Fit:
     """Fit to normal vols of options on the benchmark yield (see
     pricing.yield_option_prices), quoted at strike offsets from at-the-money.
     `weights` scales the residuals, e.g. a large weight on the at-the-money
     quote pins it. The volatility scaling is the unweighted bootstrap, rebuilt
-    at the fitted sigma on each pass."""
+    from the trial sigma inside the objective.
+
+    With eta free the problem has more than one basin: a second, spurious fit
+    exists at a sigma above 2.5% and eta above 1.5, where the volatility cap
+    does the work. Start from a skew-only fit and a moderate eta."""
     from .pricing import yield_option_prices
     key = jax.random.PRNGKey(0) if key is None else key
     if "eta" in free and model.eta == 0.0:
@@ -65,15 +69,13 @@ def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sig
     target = bl.normal_price(0.0, jnp.asarray(offsets), jnp.asarray(vols), expiry)
     vega = bl.normal_vega(0.0, jnp.asarray(offsets), jnp.asarray(vols), expiry)
 
-    for _ in range(passes):
-        ybar_fn = volscale.bootstrap_fn(curve, model, grid)
+    def price(theta):
+        m = model._replace(**{name: theta[i] for i, name in enumerate(free)})
+        return yield_option_prices(m, curve, expiry, offsets, volscale.bootstrap_fn(curve, m, grid),
+                                   key, n_paths, steps_per_year)
 
-        def price(theta, ybar_fn=ybar_fn):
-            m = model._replace(**{name: theta[i] for i, name in enumerate(free)})
-            return yield_option_prices(m, curve, expiry, offsets, ybar_fn, key, n_paths, steps_per_year)
-
-        sol = _solve(model, free, lambda th: 1e4 * w * (price(th)[1] - target) / vega)
-        model = model._replace(**{n: float(v) for n, v in zip(free, sol.x)})
+    sol = _solve(model, free, lambda th: 1e4 * w * (price(th)[1] - target) / vega)
+    model = model._replace(**{n: float(v) for n, v in zip(free, sol.x)})
     _, p, se = yield_option_prices(model, curve, expiry, offsets,
                                    volscale.bootstrap_fn(curve, model, grid), key, n_paths, steps_per_year)
     model_vols = bl.implied_normal_vol(np.asarray(p), 0.0, offsets, expiry)
@@ -82,23 +84,18 @@ def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sig
 
 
 def calibrate(model: Model, curve, quotes, free: Sequence[str] = ("sigma",),
-              ybar_fn=None, key=None, n_paths=2**15, steps_per_year=24, passes=2) -> Fit:
+              ybar_fn=None, key=None, n_paths=2**15, steps_per_year=24) -> Fit:
     """Least-squares fit of the parameters named in `free`, starting from `model`.
 
     If ybar_fn is None the volatility scaling is the unweighted bootstrap on
-    annual expiries. It depends on sigma, so the fit is repeated `passes`
-    times with the scaling rebuilt at the latest sigma.
+    annual expiries, rebuilt from the trial sigma inside the objective.
     """
     key = jax.random.PRNGKey(0) if key is None else key
     if "eta" in free and model.eta == 0.0:
         model = model._replace(eta=0.3)     # prices are even in eta: zero gradient at 0
-    if ybar_fn is None:
-        grid = np.arange(1.0, np.ceil(quotes.swaption.expiry) + 1.0)
-        for _ in range(passes):
-            fit = calibrate(model, curve, quotes, free, volscale.bootstrap_fn(curve, model, grid),
-                            key, n_paths, steps_per_year)
-            model = fit.model
-        return fit
+    grid = np.arange(1.0, np.ceil(quotes.swaption.expiry) + 1.0)
+    scaling = (lambda m: ybar_fn) if ybar_fn is not None else \
+        (lambda m: volscale.bootstrap_fn(curve, m, grid))
     swp, strikes = quotes.swaption, jnp.asarray(quotes.strikes)
     vega = quotes.annuity * np.asarray(
         bl.normal_vega(quotes.forward, strikes, jnp.asarray(quotes.normal_vols), swp.expiry))
@@ -106,11 +103,11 @@ def calibrate(model: Model, curve, quotes, free: Sequence[str] = ("sigma",),
 
     def price(theta):
         m = model._replace(**{name: theta[i] for i, name in enumerate(free)})
-        return swaption_prices(m, curve, swp, strikes, ybar_fn, key, n_paths, steps_per_year)
+        return swaption_prices(m, curve, swp, strikes, scaling(m), key, n_paths, steps_per_year)
 
     sol = _solve(model, free, lambda th: 1e4 * (price(th)[0] - target) / vega_j)
     fitted = model._replace(**{n: float(v) for n, v in zip(free, sol.x)})
-    p, se = swaption_prices(fitted, curve, swp, strikes, ybar_fn, key, n_paths, steps_per_year)
+    p, se = swaption_prices(fitted, curve, swp, strikes, scaling(fitted), key, n_paths, steps_per_year)
     vols = bl.implied_normal_vol(np.asarray(p) / quotes.annuity, quotes.forward,
                                  quotes.strikes, swp.expiry)
     return Fit(fitted, 1e4 * (vols - quotes.normal_vols), vols,

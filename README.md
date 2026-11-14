@@ -21,9 +21,9 @@ implementation written from the paper; it is not the authors' code.
 | Volatility scaling: zeroth order and bootstrap, eqs. (79)-(81) | `volscale.py` | tested, including its effect on at-the-money volatility |
 | Payer swaption / caplet pricer in the expiry-forward measure | `pricing.py` | Gaussian case matches Jamshidian's exact price |
 | Normal and displaced-lognormal quote conventions | `bachelier.py` | tested |
-| Calibration of `sigma`, `b`, `eta` (autodiff Jacobian; finite differences for `eta`) | `calibration.py` | recovers known parameters; `eta` fit not validated |
+| Calibration of `sigma`, `b`, `eta` (autodiff Jacobian, scaling rebuilt inside the objective; finite differences for `eta`) | `calibration.py` | recovers known parameters; reproduces the paper's `sigma` and skew fit |
 | Test market: Joshi's displaced-diffusion LMM | `markets.py` | curve reprices the forwards exactly |
-| The paper's curves, smile quotes and plotted results, digitised | `markets.py`, `data/` | reproduce Figures 2, 3, 5, 6, 10, 11, 12 (see below) |
+| The paper's curves, smile quotes and plotted results, digitised | `markets.py`, `data/` | reproduce Figures 2, 3, 5-13 except 4 (see below) |
 | Options on the benchmark yield and calibration to their smile | `pricing.py`, `calibration.py` | reproduce the paper's `sigma` and skew fit |
 | Skew `b` and stochastic volatility `eta` | `model.py`, `pricing.py` | **validated by model-free identities only** |
 
@@ -47,9 +47,14 @@ for the decomposition, 24 steps a year for pricing):
 `examples/joshi_calibration.py` runs the Section 9.4 workflow on Mark Joshi's
 displaced-diffusion LMM example (the kooderive set-up), with the 10y x 5y
 swaption at five strikes. Fitting `sigma` and `b` matches all five normal
-volatilities to under 0.1bp (`sigma = 1.79%`, `b = 0.52`).
+volatilities to under 0.1bp (`sigma = 1.83%`, `b = 0.53`).
 
 ![Calibration on Joshi's market](docs/joshi_calibration.png)
+
+This is **not** the paper's data. The market is a model with a pure
+displaced-diffusion skew, its curve runs from 0.8% to 8.8% and stops at 20.5
+years, and swaption quotes come from the frozen-weights approximation. It
+exercises the machinery; it does not reproduce Figures 10-13.
 
 ### Skew and convexity, against the paper's own results (Section 9.2)
 
@@ -75,10 +80,23 @@ That shortfall is unexplained; candidates are the curve beyond 40 years
 applied. Forward-centred scaling gives 185bp instead of 320bp at `b = 1`, so
 the bootstrap is what the paper's numbers require.
 
-Figure 4 (smiles by skew) is not reproduced: it prices options on the yield
-itself and the paper does not say in which measure or with which payment
-date. For caplets on the 5y rate, `b = 1` moves the at-the-money price by
--0.5% at 5y expiry and +3.7% at 20y on the baseline curve.
+**Figure 4 (smiles by skew) is not reproduced**, and appears to be
+inconsistent with the rest of the paper. `examples/skew_smiles.py` prices the
+same yield options that reproduce Section 9.4:
+
+![Figure 4 comparison](docs/skew_smiles.png)
+
+- At the 5y expiry the smile slopes agree. At 10-20y the paper's plotted
+  smiles are up to four times steeper than this code's, and its
+  at-the-money vol rises with `b` where this code's falls.
+- The paper's *text* says at-the-money vol at `b = 1` is about 4bp below its
+  `b = 0` value at 5y and 6-8bp below at 20y. This code gives 4.6bp and 9bp:
+  it agrees with the text, which Figure 4 itself contradicts.
+- Figure 4's `b = 0` smile at 20y droops from 68bp to 55bp, while Figure 8
+  shows the same option at `b = 0`, `eta = 0` flat at 71.4bp.
+
+So Figure 4 may come from a different version of the authors' pricer; only
+they can say.
 
 ### The market curve (Section 9.4, Figures 10-12)
 
@@ -111,53 +129,68 @@ Three things to know:
   equally weighted. At 30 years, where the curve beyond the plotted range is
   extrapolated, `Y_eh` and `theta` are within 2bp.
 
-The three-parameter fit including `eta` does **not** converge in this code
-(the paper reports `sigma = 1.492%`, `b = 0.417`, `eta = 0.779`, and itself
-rejects the resulting decomposition).
+The three-parameter fit including `eta` converges, to `sigma = 1.80%`,
+`b = 0.36`, `eta = 1.39` with errors under 1.5bp, not to the paper's
+`1.492%`, `0.417`, `0.779`. At the paper's parameters this code's smile is
+within 2.6bp of the market, so both are acceptable fits: `sigma` and `eta`
+trade off along a flat valley and are weakly identified by five quotes. (A
+second, spurious basin exists above `sigma = 2.5%` where the volatility cap
+does the work; the paper itself rejects the three-parameter decomposition.)
 
-### Stochastic volatility and convexity (Section 9.3)
+**Figure 13** (short-rate densities under P, `examples/short_rate_density.py`):
 
-`examples/stochvol_sweep.py` produces the analogues of Figures 7-9 on an
-illustrative curve (with `b = 0` convexity does not depend on the curve) (about five minutes on a CPU at the default 131,072 paths).
+![Short-rate densities](docs/short_rate_density.png)
+
+| r(30y) | this code | paper |
+|---|---|---|
+| Standard deviation, no skew | 638bp | "over 600bp" |
+| Probability negative, no skew | 0.27 | "around one in four" |
+| Median, with skew | 13bp | "around zero" |
+| Probability negative, with skew | 0.48 | "about one half" |
+| Mean, with skew | 281bp | 280bp |
+
+### Stochastic volatility and convexity (Section 9.3, Figures 7-9)
+
+`examples/stochvol_sweep.py`, on the paper's baseline curve with the 20y x 5y
+yield option as the benchmark:
 
 ![Stochastic-volatility sweep](docs/stochvol_sweep.png)
 
-| eta | 20y x 5y ATM vol, sigma fixed | sigma recalibrated to ATM | convexity vs eta = 0 |
-|---|---|---|---|
-| 0 | 88.8bp | 1.000% | 1.00 |
-| 0.5 | 83.8bp | 1.059% | 1.12 |
-| 1.0 | 74.8bp | 1.188% | 1.41 |
-| 1.5 | 66.7bp | 1.336% | 1.78 |
+| eta | ATM vol at fixed sigma: this code / paper | Convexity at 40y, ATM vol fixed: this code / paper |
+|---|---|---|
+| 0 | 70.9 / 71.4bp | 119.0 / 119.2bp |
+| 0.5 | 66.8 / 66.1bp | 133.7 / 133.6bp |
+| 1.0 | 59.9 / 60.9bp | 165.5 / 166.7bp |
+| 1.5 | 53.8 / 53.6bp | 202.7 / 212.8bp |
 
-The paper's three qualitative findings are reproduced: at fixed `sigma`
-convexity does not move with `eta`; at-the-money volatility falls as `eta`
-rises; and holding at-the-money volatility fixed raises convexity. One number
-can be compared directly: Section 8.2 quotes an uplift of about 15%, 16% and
-17.5% for `eta = 0.6` over ten years at `kappa = 0`, `0.03` and `0.05`; this
-code gives 13.4%, 15.1% and 16.4%. The levels in the figure are not
-comparable with the paper's, since the curve differs.
+Figure 7 (convexity unchanged by `eta` at fixed `sigma`) is reproduced.
+Figure 9 is matched to within 1% up to `eta = 1` and is 5% low at
+`eta = 1.5`. The paper's convexity ratios equal the squared ratios of its
+at-the-money vols, as if `sigma` were rescaled linearly; here `sigma` is
+recalibrated on the simulated option, which is not exactly linear because the
+convexity state `y` is random under stochastic volatility. The paper's
+`eta = 0` level of 71.4bp is also 0.7% above the Gaussian closed form
+(70.9bp) that reproduces its own Section 9.4 `sigma`. Smile shapes agree to
+1-2bp, with this code's minimum sitting about 50bp to the right.
 
-This is **not** the paper's data. The market is a model with a pure
-displaced-diffusion skew, its curve runs from 0.8% to 8.8% and stops at 20.5
-years, and swaption quotes come from the frozen-weights approximation. It
-exercises the machinery; it does not reproduce Figures 10-13.
+Section 8.2 also quotes an uplift of about 15%, 16% and 17.5% for `eta = 0.6`
+over ten years at `kappa = 0`, `0.03` and `0.05`; with caplets on the 5y rate
+this code gives 13.4%, 15.1% and 16.4%.
 
 ## Not done yet
 
-1. **The three-parameter fit** (`sigma`, `b`, `eta` together) does not
-   converge; the loop that rebuilds the volatility scaling as `sigma` moves
-   is the suspect.
-2. **A market with smile curvature.** Joshi's has none, so the `eta` fit is
-   exercised but not meaningfully tested. Tables from Brigo and Mercurio could
-   not be verified from a primary source and are not included;
-   `markets.Quotes` and `Curve.from_zero_nodes` take them once typed in.
-3. **Figure 4** (see above), and Figures 7-9 compared point by point with the
-   paper's plots.
+1. **Figure 4** is not reproduced (see above); it needs the authors' input.
+2. **Convexity at high skew or high vol-of-vol** is 1-5% below the paper at
+   the longest maturities. Candidates: the curve beyond the plotted range,
+   the bootstrap expiry grid, the volatility cap, and how `sigma` is
+   recalibrated.
+3. **A second smile market.** Tables from Brigo and Mercurio could not be
+   verified from a primary source and are not included; `markets.Quotes` and
+   `Curve.from_zero_nodes` take them once typed in.
 4. **Market-curve bootstrap** from swap quotes.
-5. **Short-rate density** under P (Figure 13); it is now within reach.
-6. **Multi-factor model** (`d > 1`), the Ho-Lee checks of Appendix E, and the
+5. **Multi-factor model** (`d > 1`), the Ho-Lee checks of Appendix E, and the
    forward-rate decomposition of Appendix F.
-7. Quasi-random numbers (Sobol with a Brownian bridge) and a GPU run.
+6. Quasi-random numbers (Sobol with a Brownian bridge) and a GPU run.
 
 ## Choices the paper leaves open
 
@@ -181,10 +214,12 @@ clarify them:
 
 ```bash
 pip install -e ".[dev]"
-pytest                                   # 53 tests, about four minutes on CPU
+pytest                                   # 57 tests, about three minutes on CPU
 python examples/gaussian_decomposition.py
 python examples/joshi_calibration.py
 python examples/skew_sweep.py
+python examples/skew_smiles.py
+python examples/short_rate_density.py
 python examples/market_curve.py          # about five minutes
 python examples/stochvol_sweep.py
 ```

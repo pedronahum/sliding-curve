@@ -95,3 +95,43 @@ def test_market_decomposition_with_skew_figure_12():
                                rtol=0.02, atol=0.3)
     np.testing.assert_allclose(1e4 * np.asarray(d.theta), [ref["theta"][i] for i in MKT_IDX],
                                rtol=0.02, atol=0.7)
+
+
+# --- Figure 8 (smiles by eta) and Figure 13 (short-rate densities) ------------
+
+@pytest.mark.parametrize("eta", [0.5, 1.0, 1.5])
+def test_atm_vol_falls_with_eta_figure_8(eta):
+    """20y x 5y at-the-money yield-option vol at fixed sigma = 1%: the paper
+    plots 66.1, 60.9 and 53.6bp."""
+    from slidingcurve import bachelier as bl, pricing as pr
+    curve = markets.paper_curve("baseline")
+    m = BASE._replace(eta=eta)
+    _, p, _ = pr.yield_option_prices(m, curve, 20.0, np.array([0.0]),
+                                     lambda t: volscale.ybar_zeroth(curve, 5.0, t),
+                                     jax.random.PRNGKey(0), n_paths=2**15)
+    mine = 1e4 * bl.implied_normal_vol(np.asarray(p), 0.0, np.array([0.0]), 20.0)[0]
+    paper = markets.paper_figures()["fig8"][f"eta={eta}"][5]
+    assert abs(mine - paper) < 1.5
+
+
+def test_short_rate_distribution_figure_13():
+    curve = markets.paper_curve("market")
+    ref = markets.paper_figures()["fig13"]
+    t = time_grid(30.0)
+    stats = {}
+    for name, m in (("atm", BASE._replace(sigma=0.011572)),
+                    ("skew", BASE._replace(sigma=0.011999, b=0.367))):
+        ybar = volscale.bootstrap_fn(curve, m, np.arange(1.0, 31.0))(t)
+        _, r = simulate(m, curve, t, ybar, jax.random.PRNGKey(1), n_paths=2**14,
+                        snapshot_times=(20.0, 30.0))
+        r = 1e4 * np.asarray(r)
+        stats[name] = r
+        for i, T in enumerate((20, 30)):
+            assert abs(r[i].mean() - ref[name]["mean"][f"T={T}"]) < 12       # bp
+    # Section 9.4: without skew the st.dev. of r(30) is "over 600bp" (it is
+    # sigma sqrt(30): x has no mean reversion under P) and about one path in
+    # four is negative; with skew the median is "around zero", about one in two
+    np.testing.assert_allclose(stats["atm"][1].std(), 115.72 * np.sqrt(30.0), rtol=0.02)
+    assert 0.24 < np.mean(stats["atm"][1] < 0) < 0.30
+    assert abs(np.median(stats["skew"][1])) < 40
+    assert 0.44 < np.mean(stats["skew"][1] < 0) < 0.52

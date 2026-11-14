@@ -18,6 +18,8 @@ def ybar_bootstrap(curve, kappa, delta, sigma, expiries, weighted=False):
 
     weighted=False omits the exp(kappa t) weights, the variant Section 9.1
     says the paper's numerical results use. Returns one value per expiry.
+    Written in jax.numpy and differentiable in sigma, so a calibration can
+    carry the dependence of the scaling on sigma inside its objective.
     """
     Tm = np.asarray(expiries, dtype=float)
     lo = np.concatenate([[0.0], Tm[:-1]])
@@ -25,13 +27,14 @@ def ybar_bootstrap(curve, kappa, delta, sigma, expiries, weighted=False):
         K = (np.exp(kappa * Tm) - np.exp(kappa * lo)) / kappa
     else:
         K = Tm - lo
-    ybar = np.zeros_like(Tm)
+    ybar = []
     for m in range(len(Tm)):
         # Yhat(T_k, T_m) for k <= m: benchmark yield at T_k, in the measure of
         # the option expiring at T_m.
-        yh = np.asarray(g.yhat(curve, kappa, delta, sigma, jnp.asarray(Tm[: m + 1]), Tm[m]))
-        ybar[m] = yh[m] + np.sum((yh[:m] - ybar[:m]) * K[:m]) / K[m]
-    return ybar
+        yh = g.yhat(curve, kappa, delta, sigma, jnp.asarray(Tm[: m + 1]), Tm[m])
+        acc = sum((yh[k] - ybar[k]) * K[k] for k in range(m)) if m else 0.0
+        ybar.append(yh[m] + acc / K[m])
+    return jnp.stack(ybar)
 
 
 def piecewise_constant(expiries, values, t):
@@ -45,8 +48,7 @@ def piecewise_constant(expiries, values, t):
 
 def bootstrap_fn(curve, model, expiries, weighted=False):
     """Ybar_1 as a function of time, from the bootstrap at the model's kappa,
-    delta and sigma. The scaling depends on sigma, so rebuild it when sigma
-    moves materially."""
-    vals = ybar_bootstrap(curve, float(model.kappa), float(model.delta), float(model.sigma),
-                          expiries, weighted)
+    delta and sigma. The scaling depends on sigma: rebuild it when sigma
+    changes (calibration does so inside its objective)."""
+    vals = ybar_bootstrap(curve, model.kappa, model.delta, model.sigma, expiries, weighted)
     return lambda t: piecewise_constant(expiries, vals, t)

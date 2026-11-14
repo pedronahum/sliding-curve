@@ -99,11 +99,15 @@ def time_grid(t_max: float, steps_per_year: int = 12):
 
 
 def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
-             n_batches: int = 16, antithetic: bool = True) -> Profiles:
+             n_batches: int = 16, antithetic: bool = True, snapshot_times=None):
     """Simulate on the uniform grid `t`; `ybar` is Ybar_1 on that grid.
 
     Paths are split into `n_batches` independent batches so that standard
     errors of time-integrated quantities can be taken across batches.
+
+    Returns the mean Profiles. If `snapshot_times` is given (times on the
+    grid), also returns the short rate r = f(0, t) + x of every path at those
+    times, shape [n_times, n_paths], for distributional results.
     """
     kappa, delta, sigma = model.kappa, model.delta, model.sigma
     dt = t[1] - t[0]
@@ -120,9 +124,13 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
     xs = (jnp.arange(t.shape[0]), curve.forward(t), curve.forward(t + delta),
           y0, dy0, jnp.asarray(ybar))
 
+    snap_idx = (jnp.round(jnp.asarray(snapshot_times, dtype=float) / dt).astype(int)
+                if snapshot_times is not None else jnp.zeros(0, dtype=int))
+
     def step(state, inp):
-        x, y, z = state
+        x, y, z, snap = state
         i, f0, f0d, y0, dy0, yb = inp
+        snap = jnp.where((snap_idx == i)[:, None, None], (f0 + x)[None], snap)
         y1 = y0 + Ad * x + c_y * y
         vol = local_vol(model, y1, yb, z)
         var = vol**2
@@ -136,10 +144,14 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
         y_new = y * decay_y + var * gain_y                    # exact for frozen var
         x_new = x - (dy0 + c_y * (y_new - y)) / Ad + vol * sqdt * xi[0]
         z_new = variance_step(model, z, xi[1], dt)
-        return (x_new, y_new, z_new), stats
+        return (x_new, y_new, z_new, snap), stats
 
     shape = (n_batches, draw_shape[2] * (2 if antithetic else 1))
-    init = (jnp.zeros(shape), jnp.zeros(shape), jnp.ones(shape))
-    _, stats = jax.lax.scan(step, init, xs)                   # [N+1, 5, K]
+    init = (jnp.zeros(shape), jnp.zeros(shape), jnp.ones(shape),
+            jnp.zeros((snap_idx.shape[0],) + shape))
+    (_, _, _, snap), stats = jax.lax.scan(step, init, xs)     # stats: [N+1, 5, K]
     s = jnp.transpose(stats, (1, 2, 0))                       # [5, K, N+1]
-    return Profiles(t=t, x=s[0], mu_y=s[1], var=s[2], y1=s[3], z=s[4])
+    prof = Profiles(t=t, x=s[0], mu_y=s[1], var=s[2], y1=s[3], z=s[4])
+    if snapshot_times is None:
+        return prof
+    return prof, snap.reshape(snap_idx.shape[0], -1)

@@ -23,7 +23,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="out")
     ap.add_argument("--paths", type=int, default=2**15)
-    ap.add_argument("--with-eta", action="store_true", help="also try the three-parameter fit (experimental: does not converge yet)")
+    ap.add_argument("--with-eta", action="store_true", help="also run the three-parameter fit (several minutes)")
     args = ap.parse_args()
     out = pathlib.Path(args.out)
     out.mkdir(exist_ok=True)
@@ -38,8 +38,7 @@ def main():
                                             free=("sigma",), **kw)
     # the paper's fit matches the at-the-money quote exactly: pin it with a large weight
     skew = calibration.calibrate_yield_smile(start, curve, EXPIRY, offsets, market,
-                                             free=("sigma", "b"), weights=[1, 1, 30, 1, 1],
-                                             passes=4, **kw)
+                                             free=("sigma", "b"), weights=[1, 1, 30, 1, 1], **kw)
     print("market vols (bp):    " + " ".join(f"{BP*v:6.1f}" for v in market))
     print("paper's fit (bp):    " + " ".join(f"{BP*v:6.1f}" for v in paper_fit))
     print("this code's fit (bp):" + " ".join(f"{BP*v:6.1f}" for v in skew.model_vols))
@@ -47,8 +46,9 @@ def main():
     print(f"with skew: sigma = {100*skew.model.sigma:.3f}%  b = {skew.model.b:.3f}"
           "   (paper: b = 0.367; sigma = 1.12% in the text, 1.1999% in the caption of Figure 13)")
     if args.with_eta:
-        full = calibration.calibrate_yield_smile(start, curve, EXPIRY, offsets, market,
-                                                 free=("sigma", "b", "eta"), passes=4, **kw)
+        # start from the skew fit: with eta free there is a second, spurious basin
+        full = calibration.calibrate_yield_smile(skew.model._replace(eta=0.5), curve, EXPIRY,
+                                                 offsets, market, free=("sigma", "b", "eta"), **kw)
         print(f"three parameters: sigma = {100*full.model.sigma:.3f}%  b = {full.model.b:.3f}  "
               f"eta = {full.model.eta:.3f}   (paper: 1.492%, 0.417, 0.779)   "
               f"max error {np.max(np.abs(full.vol_errors_bp)):.2f}bp")
