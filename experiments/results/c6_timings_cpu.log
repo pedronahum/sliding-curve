@@ -1,0 +1,7 @@
+An NVIDIA GPU may be present on this machine, but a CUDA-enabled jaxlib is not installed. Falling back to cpu.
+cpu [CpuDevice(id=0)] ...
+pricing simulation, 65536 paths: 1.840s   (mean x -0.0087182241)
+pricing simulation, 1048576 paths: 31.622s   (mean x -0.0087041617)
+decomposition simulation, 65536 paths: 1.071s   (gamma(40y) 318.4736bp)
+decomposition simulation, 1048576 paths: 12.112s   (gamma(40y) 317.6585bp)
+skew fit, 32,768 paths: 13.6s   (sigma 1.195693%, b 0.353936)

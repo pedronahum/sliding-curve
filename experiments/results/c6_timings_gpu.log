@@ -1,0 +1,6 @@
+gpu [CudaDevice(id=0)] ...
+pricing simulation, 65536 paths: 0.081s   (mean x -0.0087182241)
+pricing simulation, 1048576 paths: 1.156s   (mean x -0.0087041617)
+decomposition simulation, 65536 paths: 0.193s   (gamma(40y) 318.4736bp)
+decomposition simulation, 1048576 paths: 1.278s   (gamma(40y) 317.6585bp)
+skew fit, 32,768 paths: 3.6s   (sigma 1.195693%, b 0.353936)
