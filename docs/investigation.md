@@ -31,6 +31,7 @@ paper are accurate to about 0.3bp (checked below).
 | A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
 | C1 | Multi-factor model | **built**, with tests |
+| C2 | Ho-Lee closed forms | **built**, with tests |
 | C5 | Equilibrium-rate and front-end refinements | **built** (one factor), with tests |
 
 ---
@@ -939,3 +940,26 @@ for the decomposition, E^P[x] and E^{Q^tau}[x] (the multi-factor (89)-(90)).
 | general bootstrap at d = 1 equals the one-factor bootstrap (weighted and unweighted); with (78) in place of the closed form it returns the forwards (79) | `volscale.py` | 1e-13 |
 
 Not a fix to any figure; the one-factor code is untouched.
+
+---
+
+## C2. Ho-Lee closed forms (Appendix E)
+
+**Status: built**, with tests. `slidingcurve/holee.py`.
+
+E.1 (constant market price of risk lambda): gamma = sigma^2 T^2 / 6,
+theta = lambda sigma T / 2, Y_eh (98), E^P[r(t)] (98) and the excess return.
+E.2 (martingale condition on the short rate): lambda(t) = f'(0, t)/sigma +
+sigma t, Y_eh = r(0), theta = (Y(0, T) - r(0)) + sigma^2 T^2 / 6. E.3: the
+growth rates of the two portfolios of Appendix B and their gap
+theta - 2 gamma.
+
+**Tests** (`tests/test_holee.py`): the printed formulas (E.1 identity
+Y = Y_eh + theta - gamma to 1e-15; E.2 theta against direct quadrature of
+(sigma/T) int lambda(t)(T - t) dt to 1e-6 relative; E.3 gap and the paper's
+worked example, sigma = 100bp, T = 30 gives 2 gamma = 300bp); the kappa = 0,
+delta -> 0 limit of the Appendix D closed forms (D.5) equals E.2 (to
+O(delta)); the library simulator with kappa = 0 and a 0.001-year benchmark
+reproduces E.2 (Y_eh = r(0) within 3 s.e. + 0.03bp, gamma to 0.1%); and a
+direct simulation of r reproduces E.1 and the cash growth rate of E.3.
+No inconsistency in Appendix E was found.

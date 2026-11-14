@@ -26,6 +26,7 @@ implementation written from the paper; it is not the authors' code.
 | The paper's curves, smile quotes and plotted results, digitised | `markets.py`, `data/` | reproduce Figures 2, 3, 5-13 except 4 (see below) |
 | Options on the benchmark yield and calibration to their smile | `pricing.py`, `calibration.py` | reproduce the paper's `sigma` and skew fit |
 | Skew `b` and stochastic volatility `eta` | `model.py`, `pricing.py` | **validated by model-free identities only** |
+| Ho-Lee closed forms, Appendix E | `holee.py` | tested against the printed formulas, the Appendix D limit and Monte Carlo |
 | Multi-factor quasi-Gaussian model (d > 1), Sections 5-6, and the general bootstrap of Appendix C.3.2 | `multifactor.py` | Gaussian case matches closed forms; d = 1 is the one-factor model |
 
 Measured (Section 9.1 baseline: `delta = 5`, `kappa = 0.03`, monthly steps
