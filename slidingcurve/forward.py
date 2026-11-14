@@ -7,7 +7,9 @@ connection (Appendix F).
 
 In the one-factor model with constant kappa, sigma_f(u, T) = sigma_r(u)
 exp(-kappa (T - u)), sigma_P(u, T) = sigma_r(u) B(T - u) and, by (51),
-sigma_r Lambda = mu^Y / A(delta). The three terms are therefore quadratures
+sigma_r Lambda = phi^Y Lambda / A(delta) (Profiles.mu_y, which is mu^Y / A(delta) under
+the martingale condition and follows the refined drift of Sections 5.3-5.4
+otherwise). The three terms are therefore quadratures
 of the same simulated mean profiles as the yield decomposition, estimated
 independently, so `residual` is a genuine check. Proposition 5 links the two
 decompositions: gamma(T) = (1/T) int_0^T gamma_f and pi = d(T theta)/dT.

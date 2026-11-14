@@ -28,7 +28,19 @@ which is the integral of the continuous drift above (the kappa x terms cancel
 against the roll) and removes the O(dt) bias a left-point Euler drift picks up
 from a steep front end. Only the diffusion term is Euler.
 
-The simulator returns per-time-step *path means* of x, mu^Y and sigma_r^2.
+Refinements of the P-drift (Sections 5.3-5.4). Any P-drift of Y_1 pins down
+the market price of risk, (37); `simulate` adds to the step above
+
+    front end (35), (37):  E^P[Y_1(t_{i+1})] - E^P[Y_1(t_i)] for a given
+                           deterministic path (`ey_path`, e.g. front_end_path),
+    equilibrium (5.3):     (exp(-a dt) - 1) (Y_1 - Y*), the exact discrete
+                           form of the drift -a (Y_1 - Y*) (`reversion`),
+
+so that E^P[Y_1] follows the path, or Y* + exp(-a t) (Y_1(0) - Y*), exactly
+on the grid. Given both, the two drifts add.
+
+The simulator returns per-time-step *path means* of x, phi^Y Lambda (which is
+mu^Y under the martingale condition) and sigma_r^2.
 Because G(t, T) is deterministic, those three profiles are all that the yield
 decomposition needs for every maturity at once (see decomposition.py).
 """
@@ -100,9 +112,9 @@ class Profiles(NamedTuple):
     """Path means on the time grid, one row per independent batch: [K, N+1]."""
     t: jax.Array
     x: jax.Array
-    mu_y: jax.Array
+    mu_y: jax.Array         # phi^Y Lambda = mu^Y - (P-drift of Y_1), (37); mu^Y under (26)
     var: jax.Array          # sigma_r^2
-    y1: jax.Array           # benchmark yield, a P-martingale by construction
+    y1: jax.Array           # benchmark yield, a P-martingale unless the drift is refined
     z: jax.Array
 
 
@@ -111,9 +123,31 @@ def time_grid(t_max: float, steps_per_year: int = 12):
     return jnp.linspace(0.0, t_max, n + 1)
 
 
+def front_end_path(curve, delta, t, Tc, c, form: str = "exp"):
+    """Expected path of the benchmark yield Y_1 under the front-end blend (35),
+
+        E^P[Y_1(t)] = (1 - w(t)) Y(0, 0, delta) + w(t) Y(0, t, t + delta),
+
+    with w(t) = exp(-c t / Tc) ("exp") or max(1 - t / Tc, 0)^c ("power").
+    One factor, so d = 1 and the benchmark tenor is [t, t + delta]."""
+    t = jnp.asarray(t, dtype=float)
+    if form == "exp":
+        w = jnp.exp(-c * t / Tc)
+    elif form == "power":
+        w = jnp.maximum(1.0 - t / Tc, 0.0) ** c
+    else:
+        raise ValueError(f"unknown blend form {form!r}")
+    return (1.0 - w) * curve.fwd_yield(0.0, delta) + w * curve.fwd_yield(t, t + delta)
+
+
 def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
-             n_batches: int = 16, antithetic: bool = True, snapshot_times=None):
+             n_batches: int = 16, antithetic: bool = True, snapshot_times=None,
+             ey_path=None, reversion=None):
     """Simulate on the uniform grid `t`; `ybar` is Ybar_1 on that grid.
+
+    The P-drift makes Y_1 a martingale (26) by default. `ey_path` (values on
+    `t`) makes it a martingale around that deterministic path instead, (37);
+    `reversion=(a, Y*)` adds reversion to an equilibrium yield (Section 5.3).
 
     Paths are split into `n_batches` independent batches so that standard
     errors of time-integrated quantities can be taken across batches.
@@ -134,28 +168,44 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
     y0 = curve.fwd_yield(t, t + delta)
     t_next = t + dt                                           # one past the end: unused step
     dy0 = curve.fwd_yield(t_next, t_next + delta) - y0
+    # P-drift refinements: the step increment (exact for the mean on the grid)
+    # and the drift rate at t_i (second order, for phi^Y Lambda in the profiles,
+    # which the decomposition integrates by the trapezoid rule)
+    if ey_path is None:
+        dey, rate_ey = jnp.zeros_like(t), jnp.zeros_like(t)
+    else:
+        ey = jnp.asarray(ey_path, dtype=float)
+        dey = jnp.concatenate([ey[1:] - ey[:-1], jnp.zeros(1)])   # last step unused
+        rate_ey = jnp.gradient(ey, dt)                            # central differences
+    if reversion is None:
+        a, ystar, rev_k = 0.0, 0.0, 0.0
+    else:
+        a, ystar = reversion
+        rev_k = jnp.expm1(-a * dt)
     xs = (jnp.arange(t.shape[0]), curve.forward(t), curve.forward(t + delta),
-          y0, dy0, jnp.asarray(ybar))
+          y0, dy0, jnp.asarray(ybar), dey, rate_ey)
 
     snap_idx = (jnp.round(jnp.asarray(snapshot_times, dtype=float) / dt).astype(int)
                 if snapshot_times is not None else jnp.zeros(0, dtype=int))
 
     def step(state, inp):
         x, y, z, snap = state
-        i, f0, f0d, y0, dy0, yb = inp
+        i, f0, f0d, y0, dy0, yb, de, rde = inp
         snap = jnp.where((snap_idx == i)[:, None, None], (f0 + x)[None], snap)
         y1 = y0 + Ad * x + c_y * y
         vol = local_vol(model, y1, yb, z)
         var = vol**2
         rho = (f0d + ekd * (x + y * Bd) - f0 - x) / delta
         mu_y = rho + var * c_y
-        stats = jnp.stack([jnp.mean(a, axis=1) for a in (x, mu_y, var, y1, z)])
+        drift_y1 = de + rev_k * (y1 - ystar)                 # P-drift of Y_1 over the step
+        lam = mu_y - (rde - a * (y1 - ystar))                 # phi^Y Lambda, (37)
+        stats = jnp.stack([jnp.mean(a, axis=1) for a in (x, lam, var, y1, z)])
 
         xi = jax.random.normal(jax.random.fold_in(key, i), draw_shape)
         if antithetic:
             xi = jnp.concatenate([xi, -xi], axis=2)
         y_new = y * decay_y + var * gain_y                    # exact for frozen var
-        x_new = x - (dy0 + c_y * (y_new - y)) / Ad + vol * sqdt * xi[0]
+        x_new = x + (drift_y1 - dy0 - c_y * (y_new - y)) / Ad + vol * sqdt * xi[0]
         z_new = variance_step(model, z, xi[1], dt)
         return (x_new, y_new, z_new, snap), stats
 

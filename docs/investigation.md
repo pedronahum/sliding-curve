@@ -30,6 +30,7 @@ paper are accurate to about 0.3bp (checked below).
 | A7 | Three-parameter fit | **explained**: eta not identified at Monte-Carlo precision; question to authors |
 | A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
+| C5 | Equilibrium-rate and front-end refinements | **built** (one factor), with tests |
 
 ---
 
@@ -827,3 +828,76 @@ Monte Carlo against closed form: 0.002bp at most. Closed form against the
 figure: 0.24 (Y_eh), 0.12 (theta), 0.08bp (gamma) at most, i.e.
 digitisation error. `tests/test_figure_2.py` checks the closed forms against
 all four series of Figures 2 and 5 to 0.5bp.
+
+---
+
+## C5. Equilibrium-rate and front-end refinements (Sections 5.3-5.4)
+
+**Status: built** (one-factor model), with tests.
+
+Section 5.4 notes that any P-drift of the benchmark yields pins down the
+market price of risk through (37), and that the equilibrium rate of 5.3 is
+the drift -a (Y - Y*). `simulate` takes both:
+
+- `ey_path`: a deterministic path for E^P[Y_1(t)] on the grid, e.g.
+  `front_end_path(curve, delta, t, Tc, c, form)`, the blend (35) with the
+  exponential or power weight of Section 5.4. Y_1 is then a martingale
+  around that path.
+- `reversion=(a, Y*)`: the drift -a (Y_1 - Y*), in its exact discrete form
+  (exp(-a dt) - 1)(Y_1 - Y*) per step, so that E^P[Y_1(t)] =
+  Y* + exp(-a t)(Y_1(0) - Y*) holds exactly on the grid.
+
+Given both, the drifts add. The default (neither) is bit-for-bit the old
+simulator (`test_default_is_unchanged`, 1e-15).
+
+**What had to change besides the drift.** The term premium (54) and the
+forward premium of (20) integrate the market price of risk, phi^Y Lambda,
+which equals mu^Y only under the martingale condition. `Profiles.mu_y` now
+holds phi^Y Lambda = mu^Y - (P-drift rate of Y_1); it is unchanged under (26).
+The drift rate stored there is the *pointwise* rate at t_i (central
+differences of the path; -a (Y_1 - Y*)), not the step increment over dt:
+the first-order mismatch with the trapezoid quadrature left a 0.3bp
+residual in the decomposition, the pointwise rate brings it back to the
+base engine's 0.004bp.
+
+**Tests** (`tests/test_front_end.py`, 16,384 paths, market curve,
+sigma = 1.157%):
+E^P[Y_1] follows the blend (35) and the equilibrium mean path to within
+4 s.e.; in the Gaussian case E^P[x] equals the closed form
+(m(t) - Y(0, t, t + delta) - c_y y(t)) / A(delta) implied by the mean path;
+the decomposition (12) closes to 3 s.e. + 0.02bp with front end, equilibrium
+reversion and skew b = 0.4; and the front end moves Y_eh(2y) towards the
+market yield, as (36) says it should for T well below Tc.
+
+**Effect on the decomposition** (`experiments/c5_refinements.py`; market
+curve, Gaussian, 65,536 paths; standard errors are below 0.005bp because
+E^P[x] is linear in the noise and paths are antithetic; gamma is unchanged
+because the volatility does not depend on the drift when b = 0):
+
+| drift | Y_eh 2y | 5y | 10y | 30y | theta 2y | 5y | 10y | 30y | (36)/(5.3) approx. of Y_eh 2y, 30y |
+|---|---|---|---|---|---|---|---|---|---|
+| martingale (26) | 392.01 | 380.54 | 370.13 | 377.86 | 9.82 | 29.19 | 70.80 | 173.09 | |
+| front end, exp, Tc = 2.5, c = 1 | 395.67 | 385.43 | 374.22 | 379.35 | 6.16 | 24.30 | 66.72 | 171.60 | 388.91, 370.11 |
+| front end, exp, Tc = 2.5, c = 3 | 393.58 | 381.43 | 370.59 | 378.01 | 8.25 | 28.31 | 70.35 | 172.94 | 377.20, 367.57 |
+| front end, power, Tc = 2.5, c = 1 | 394.93 | 381.84 | 370.78 | 378.08 | 6.90 | 27.90 | 70.16 | 172.87 | 385.43, 368.08 |
+| equilibrium a = 0.2, Y* = 3.5% | 381.65 | 358.86 | 336.67 | 328.72 | 20.18 | 50.88 | 104.27 | 222.24 | 363.83, 352.79 |
+| equilibrium a = 0.1, Y* = 4.5% | 396.58 | 390.93 | 388.06 | 411.17 | 5.25 | 18.81 | 52.87 | 139.79 | 374.57, 423.64 |
+
+Market yields: 400.97, 404.74, 423.01, 443.12bp. Residuals 0.004-0.009bp.
+
+The paper's approximations are a poor guide to these numbers, and that is
+expected rather than an inconsistency: (36) blends the *short rate*
+(w_1 "a proxy to the blending function applied to the instantaneous forward
+rates"), and the 5.3 formula reverts r; with d = 1 the only benchmark is the
+5-year forward yield, so the refinement is imposed on Y_1, and the short
+rate inherits it through the factor structure. The qualitative claims hold:
+the front end raises Y_eh towards Y(0, T) for T below Tc (the 2-year gap
+from 9.0 to 5.3bp with c = 1), and fades out by 30 years; reversion to an
+equilibrium below (above) today's 5-year yield lowers (raises) Y_eh and
+moves the difference into theta. Imposing (35) on the short rate itself
+needs a benchmark with a short tenor, i.e. the multi-factor model (C1);
+the refinements are not wired into `multifactor.simulate_multi`.
+
+Not a fix to any figure: no result of Sections 7-9 uses the refinements,
+and the default drift is unchanged, so Figures 2, 3, 5, 6, 9-13 and
+sigma = 1.157% are untouched (full suite: 101 tests pass).
