@@ -61,24 +61,32 @@ exercises the machinery; it does not reproduce Figures 10-13.
 The paper's two synthetic curves and its plotted results were read off the
 figure images (`tools/digitise_figures.py`, accurate to a few tenths of a
 basis point). On those curves, with the Section 9.1 settings and the
-unweighted bootstrap scaling, `examples/skew_sweep.py` gives:
+unweighted bootstrap scaling on a monthly expiry grid,
+`examples/skew_sweep.py` gives:
 
 ![Skew sweep against the paper](docs/skew_sweep.png)
 
 | Convexity at 40y | b = 0 | 0.25 | 0.5 | 0.75 | 1 |
 |---|---|---|---|---|---|
-| Baseline curve, this code | 119.0 | 144.2 | 201.1 | 264.8 | 318.8 |
+| Baseline curve, this code | 119.0 | 143.5 | 199.8 | 263.7 | 318.5 |
 | Baseline curve, paper (Figure 3) | 119.0 | 144.1 | 202.1 | 267.6 | 323.3 |
-| Steep curve, this code | 119.0 | 117.7 | 128.1 | 150.8 | 180.1 |
+| Steep curve, this code | 119.0 | 118.1 | 129.0 | 152.7 | 183.3 |
 | Steep curve, paper (Figure 6) | 119.5 | 118.4 | 129.9 | 154.9 | 186.3 |
 
 The expectations-hypothesis yield of Figures 2 and 5 is matched to within
 0.5bp at every maturity. Convexity is matched to within Monte-Carlo error
-at low skew and falls 1-3% short of the paper at high skew and long maturity.
-That shortfall is unexplained; candidates are the curve beyond 40 years
-(extrapolated here), the bootstrap expiry grid and how the volatility cap is
-applied. Forward-centred scaling gives 185bp instead of 320bp at `b = 1`, so
-the bootstrap is what the paper's numbers require.
+at low skew and falls 1.7-2.6% short of the paper at `b >= 0.5` and 40
+years (precise runs: 317.2 +- 0.9 against 323.3 at `b = 1`; A2). Part of the
+earlier shortfall was numerical: the bootstrap (81) discretises (80) with a
+first-order error in its expiry grid, and the annual grid used before was
+3.4bp off on the steep curve at `b = 1`; the default grid is now monthly
+(within 0.2bp of converged). The rest sits inside the sensitivity to the
+volatility cap of Remark 8, which binds at high skew even without
+stochastic volatility: at `b = 1`, moving the cap from 10x to 12x moves
+`gamma(40y)` by 26bp. The paper does not define the cap precisely enough to
+go further. The time step, the curve beyond 40 years and the volatility
+floor were ruled out. Forward-centred scaling gives 185bp instead of 320bp at
+`b = 1`, so the bootstrap is what the paper's numbers require.
 
 **Figure 4 (smiles by skew) is not reproduced**, and appears to be
 inconsistent with the rest of the paper. `examples/skew_smiles.py` prices the
@@ -116,10 +124,10 @@ results were also read off the figures. `examples/market_curve.py`:
 |---|---|---|
 | `sigma` for an 82bp at-the-money vol, `b = 0` | 1.157% | 1.157% |
 | Figure 10 at 20y: `Y_eh`, `theta`, `gamma` | 372.6, 138.0, 58.3bp | 372.6, 138.0, 58.3bp |
-| Skew fit: `sigma`, `b` | 1.19%, 0.35 | 1.1999%, 0.367 |
-| Skew fit vols at -200, -50, 0, +50, +200bp | 72.9, 79.7, 82.0, 84.1, 90.4 | 73.3, 79.8, 82.0, 84.2, 90.7 |
-| Figure 12 `gamma` at 30y, paper's parameters | 140.5bp | 140.3bp |
-| Figure 12 `gamma` at 30y, this code's fit | 136.6bp | 140.3bp |
+| Skew fit: `sigma`, `b` | 1.196%, 0.354 | 1.1999%, 0.367 |
+| Skew fit vols at -200, -50, 0, +50, +200bp | 72.9, 79.8, 82.0, 84.2, 90.4 | 73.3, 79.8, 82.0, 84.2, 90.7 |
+| Figure 12 `gamma` at 30y, paper's parameters | 140.1bp | 140.3bp |
+| Figure 12 `gamma` at 30y, this code's fit | 136.8bp | 140.3bp |
 
 Three things to know:
 
@@ -171,9 +179,9 @@ valley at larger `eta`. This is the paper's own conclusion in other words.
 |---|---|---|
 | Standard deviation, no skew | 638bp | "over 600bp" |
 | Probability negative, no skew | 0.27 | "around one in four" |
-| Median, with skew | 13bp | "around zero" |
-| Probability negative, with skew | 0.48 | "about one half" |
-| Mean, with skew | 281bp | 280bp |
+| Median, with skew | 26bp | "around zero" |
+| Probability negative, with skew | 0.47 | "about one half" |
+| Mean, with skew | 282bp | 280bp |
 
 ### Stochastic volatility and convexity (Section 9.3, Figures 7-9)
 
@@ -221,10 +229,11 @@ reproduces the Jensen ratio to 0.1 points.
 
 1. **Figure 4** is not reproduced and is inconsistent with the paper's text
    and its Figure 8 (A1); it needs the authors' input.
-2. **Convexity at high skew or high vol-of-vol** is 1-5% below the paper at
-   the longest maturities. Candidates: the curve beyond the plotted range,
-   the bootstrap expiry grid, the volatility cap, and how `sigma` is
-   recalibrated.
+2. **Convexity at high skew or high vol-of-vol** is 1.7-2.6% (skew) and 4%
+   (`eta = 1.5`) below the paper at the longest maturities. The skew gap is
+   inside the sensitivity to the volatility cap (A2); the vol-of-vol gap is
+   most plausibly the paper's own sampling noise (A3). Both need the
+   authors' input.
 3. **A second smile market.** Tables from Brigo and Mercurio could not be
    verified from a primary source and are not included; `markets.Quotes` and
    `Curve.from_zero_nodes` take them once typed in.
@@ -247,8 +256,11 @@ clarify them:
   moment-matched alternative that is smooth in `eta`, so calibrations with
   `eta` free use autodiff instead of finite differences (B1).
 - **Volatility cap** (Remark 8). Applied to `sigma_r` at 10x `sigma`; the
-  local volatility is floored at zero.
-- **Bootstrap grid** `T_m` for the volatility scaling: annual by default.
+  local volatility is floored at zero. At `b >= 0.5` the cap binds and
+  convexity at 40 years depends on its level (A2); the paper's definition
+  is not precise enough to pin it down.
+- **Bootstrap grid** `T_m` for the volatility scaling: monthly
+  (`volscale.bootstrap_grid`), where (81) is converged; annual is not (A2).
 - **Synthetic curves.** Splines through yields read off Figures 2 and 5,
   extended quadratically from 40 to 45 years.
 - **Calibration objective.** Price errors divided by normal vega, on fixed

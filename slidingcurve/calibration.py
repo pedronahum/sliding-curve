@@ -56,7 +56,8 @@ def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sig
     pricing.yield_option_prices), quoted at strike offsets from at-the-money.
     `weights` scales the residuals, e.g. a large weight on the at-the-money
     quote pins it. The volatility scaling is the unweighted bootstrap, rebuilt
-    from the trial sigma inside the objective.
+    from the trial sigma inside the objective, on a monthly expiry grid
+    (volscale.bootstrap_grid).
 
     With eta free the problem has more than one basin: a second, spurious fit
     exists at a sigma above 2.5% and eta above 1.5, where the volatility cap
@@ -67,7 +68,7 @@ def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sig
         model = model._replace(eta=0.3)
     offsets, vols = np.asarray(offsets, dtype=float), np.asarray(vols, dtype=float)
     w = jnp.ones(len(vols)) if weights is None else jnp.asarray(weights, dtype=float)
-    grid = np.arange(1.0, np.ceil(expiry) + 1.0) if bootstrap_expiries is None else bootstrap_expiries
+    grid = volscale.bootstrap_grid(np.ceil(expiry)) if bootstrap_expiries is None else bootstrap_expiries
     vj = jnp.asarray(vols)
 
     def priced(m):
@@ -94,12 +95,12 @@ def calibrate(model: Model, curve, quotes, free: Sequence[str] = ("sigma",),
     """Least-squares fit of the parameters named in `free`, starting from `model`.
 
     If ybar_fn is None the volatility scaling is the unweighted bootstrap on
-    annual expiries, rebuilt from the trial sigma inside the objective.
+    monthly expiries, rebuilt from the trial sigma inside the objective.
     """
     key = jax.random.PRNGKey(0) if key is None else key
     if "eta" in free and model.eta == 0.0:
         model = model._replace(eta=0.3)     # prices are even in eta: zero gradient at 0
-    grid = np.arange(1.0, np.ceil(quotes.swaption.expiry) + 1.0)
+    grid = volscale.bootstrap_grid(np.ceil(quotes.swaption.expiry))
     scaling = (lambda m: ybar_fn) if ybar_fn is not None else \
         (lambda m: volscale.bootstrap_fn(curve, m, grid))
     swp, strikes = quotes.swaption, jnp.asarray(quotes.strikes)

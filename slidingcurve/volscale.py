@@ -20,6 +20,12 @@ def ybar_bootstrap(curve, kappa, delta, sigma, expiries, weighted=False):
     says the paper's numerical results use. Returns one value per expiry.
     Written in jax.numpy and differentiable in sigma, so a calibration can
     carry the dependence of the scaling on sigma inside its objective.
+
+    The recursion (81),
+        Ybar_m K_m = Yhat(T_m, T_m) K_m + sum_{k<m} (Yhat(T_k, T_m) - Ybar_k) K_k,
+    telescopes: with R_m = sum_{k<=m} Yhat(T_k, T_m) K_k it reads
+    Ybar_m K_m = R_m - R_{m-1}, so the whole scaling is one matrix of
+    forward-measure means and a difference (no loop over expiries).
     """
     Tm = np.asarray(expiries, dtype=float)
     lo = np.concatenate([[0.0], Tm[:-1]])
@@ -27,14 +33,13 @@ def ybar_bootstrap(curve, kappa, delta, sigma, expiries, weighted=False):
         K = (np.exp(kappa * Tm) - np.exp(kappa * lo)) / kappa
     else:
         K = Tm - lo
-    ybar = []
-    for m in range(len(Tm)):
-        # Yhat(T_k, T_m) for k <= m: benchmark yield at T_k, in the measure of
-        # the option expiring at T_m.
-        yh = g.yhat(curve, kappa, delta, sigma, jnp.asarray(Tm[: m + 1]), Tm[m])
-        acc = sum((yh[k] - ybar[k]) * K[k] for k in range(m)) if m else 0.0
-        ybar.append(yh[m] + acc / K[m])
-    return jnp.stack(ybar)
+    # Yhat(T_k, T_m) for all k <= m: benchmark yield at T_k, in the measure of
+    # the option expiring at T_m
+    tk, tm = np.meshgrid(Tm, Tm, indexing="ij")
+    lower = np.triu(np.ones((len(Tm), len(Tm))))              # k <= m
+    yh = g.yhat(curve, kappa, delta, sigma, jnp.asarray(np.minimum(tk, tm)), jnp.asarray(tm))
+    R = jnp.sum(yh * (lower * K[:, None]), axis=0)              # R_m
+    return (R - jnp.concatenate([jnp.zeros(1), R[:-1]])) / K
 
 
 def piecewise_constant(expiries, values, t):
@@ -44,6 +49,18 @@ def piecewise_constant(expiries, values, t):
     idx = jnp.clip(jnp.searchsorted(Tm, jnp.asarray(t, dtype=float), side="left"),
                    0, Tm.shape[0] - 1)
     return jnp.asarray(values)[idx]
+
+
+def bootstrap_grid(horizon, per_year=12):
+    """Expiry grid T_m for the bootstrap: monthly by default.
+
+    (81) is the rectangle-rule discretisation of the continuous condition
+    (80), and its error is first order in the grid spacing: on the steep
+    curve at b = 1, gamma(40y) moves by 1.7, 2.6, 3.2, 3.4 and 3.4bp going
+    from an annual grid to semi-annual, quarterly, monthly, fortnightly and
+    weekly ones (docs/investigation.md, A2). Monthly is within 0.2bp of the
+    limit."""
+    return np.arange(1, int(round(per_year * horizon)) + 1) / float(per_year)
 
 
 def bootstrap_fn(curve, model, expiries, weighted=False):

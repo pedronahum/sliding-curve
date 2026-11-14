@@ -26,7 +26,7 @@ def main():
     curve = markets.paper_curve("baseline")
     ref = markets.paper_figures()["fig4"]
     base = Model(kappa=0.03, delta=5.0, sigma=0.01)
-    grid = np.arange(1.0, 21.0)
+    grid = volscale.bootstrap_grid(20.0)
     res = {}
     print("expiry |    b | ATM vol (paper) | vol at -80bp (paper) | vol at +80bp (paper) | mean abs diff")
     for expiry in (5, 10, 15, 20):

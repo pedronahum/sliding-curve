@@ -1,0 +1,5 @@
+steep    b=1.000: annual  182.4 (+0.00)  semi-annual  184.2 (+1.74)  quarterly  185.1 (+2.62)  monthly  185.6 (+3.21)  fortnightly  185.8 (+3.35)  weekly  185.9 (+3.42)
+steep    b=0.750: annual  152.3 (+0.00)  semi-annual  153.3 (+1.01)  quarterly  153.8 (+1.52)  monthly  154.2 (+1.86)  fortnightly  154.3 (+1.95)  weekly  154.3 (+1.99)
+baseline b=1.000: annual  321.9 (+0.00)  semi-annual  321.7 (-0.18)  quarterly  321.6 (-0.26)  monthly  321.6 (-0.32)  fortnightly  321.8 (-0.10)  weekly  321.8 (-0.10)
+baseline b=0.250: annual  144.6 (+0.00)  semi-annual  144.2 (-0.41)  quarterly  144.0 (-0.60)  monthly  143.9 (-0.72)  fortnightly  144.0 (-0.67)  weekly  143.9 (-0.69)
+market   b=0.367: annual  140.8 (+0.00)  semi-annual  140.4 (-0.33)  quarterly  140.3 (-0.48)  monthly  140.1 (-0.63)  fortnightly  140.1 (-0.69)  weekly  140.1 (-0.70)

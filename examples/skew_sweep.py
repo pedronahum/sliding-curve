@@ -4,7 +4,8 @@ paper's own plotted results.
 Curves and reference values are read off the paper's figures (see
 markets.paper_curve and tools/digitise_figures.py). Settings follow Section
 9.1: delta = 5, kappa = 0.03, sigma = 1%, eta = 0, unweighted bootstrap for
-the volatility scaling (annual expiry grid, which the paper does not state).
+the volatility scaling (monthly expiry grid: the paper does not state one, and
+the annual grid is not converged; see docs/investigation.md, A2).
 
     python examples/skew_sweep.py [--out out]
 """
@@ -35,7 +36,7 @@ def main():
     base = Model(kappa=0.03, delta=5.0, sigma=0.01)
     t = time_grid(40.0, steps_per_year=12)
     mats = jnp.arange(1.0, 41.0)
-    grid = np.arange(1.0, 41.0)
+    grid = volscale.bootstrap_grid(40.0)
     show = [9, 19, 29, 39]                      # 10, 20, 30, 40 years
     results = {}
 

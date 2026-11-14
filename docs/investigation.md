@@ -22,6 +22,7 @@ paper are accurate to about 0.3bp (checked below).
 |---|---|---|
 | A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
 | A1 | Figure 4 | **paper inconsistency** (contradicts the text, Figure 8 and the model's Gaussian limit); question to authors |
+| A2 | Convexity at high skew | **partly fixed** (bootstrap grid); rest bounded by the cap definition; question to authors |
 | A3 | Figure 9 at eta = 1.5 | **unresolved**, bounded; question to authors |
 | A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); **paper inconsistency** (level) |
 | A5 | Section 8.2 uplift | **explained** |
@@ -561,3 +562,99 @@ and recovery of known (sigma, b, eta) by a fit that uses autodiff.
 same start): QE with finite differences 83s, ending at (1.752%, 0.379,
 1.274); lognormal with autodiff 40s, ending at (1.710%, 0.380, 1.178).
 Both stop on the same valley (A7), with errors within 0.1bp of each other.
+
+---
+
+## A2. Convexity at high skew (Figures 3 and 6)
+
+**Status: partly fixed (the bootstrap grid was not converged); the remaining
+1.7-2.6% shortfall lies inside the sensitivity to the volatility cap,
+which the paper does not define precisely enough. Question to authors.**
+
+*Hypotheses, one at a time* (`experiments/a2_skew_variants.py`; gamma at
+40y, model minus paper, s.e. in brackets; library = annual unweighted
+bootstrap, 12 steps a year, 65,536 paths, seed 1). The last three columns
+are results that already matched:
+
+| variant | base b=1 | base b=0.75 | steep b=1 | steep b=0.75 | base b=0.25 | steep b=0.25 | Fig. 12 at 30y |
+|---|---|---|---|---|---|---|---|
+| library | -4.5 (2.6) | -2.8 (1.6) | -6.3 (1.4) | -4.1 (0.8) | +0.2 | -0.7 | +0.2 |
+| zeroth-order scaling (79) | -137.9 | -115.7 | -66.3 | -45.7 | -26.6 | -9.3 | -24.6 |
+| weighted bootstrap (80) | -31.5 | -30.1 | -19.1 | -13.7 | -9.6 | -2.5 | -5.7 |
+| **monthly bootstrap grid** | -4.8 | -3.9 | **-3.1** | **-2.2** | -0.5 | -0.3 | -0.5 |
+| 24 / 52 steps a year | -1.4 / -2.4 | -0.4 / -2.0 | -3.9 / -4.3 | -2.6 / -3.1 | +0.6 / +0.3 | -0.6 | +0.5 / +0.3 |
+| curve extension linear / flat / flat forward | -4.6 / -4.8 / -4.6 | | -6.3 / -6.2 / -6.3 | | -0.4 / -1.0 / -0.3 | -0.7 | -0.6 / -1.0 / -0.5 |
+| vol not floored (abs) | -4.5 | -2.7 | -6.3 | -4.1 | +0.2 | -0.7 | +0.2 |
+| rate floored instead of vol | -4.5 | -2.0 | -6.3 | -3.8 | **+3.1** | +1.0 | +1.6 |
+| cap on the local part only | identical to library at eta = 0 | | | | | | |
+| no cap | **+5660** | **+1041** | +38.0 | +2.3 | +1.9 | -0.7 | +1.0 |
+
+Zeroth-order and weighted scalings are ruled out (they break everything that
+matched); so is flooring the rate. Without the cap, b = 1 explodes.
+
+*The bootstrap grid was not converged.* (81) is the rectangle-rule
+discretisation of the continuous condition (80); refining its expiry grid
+(`experiments/a2_grid_convergence.py`, common random numbers, only the
+scaling differs) shows a first-order error:
+
+| change from the annual grid | semi-annual | quarterly | monthly | fortnightly | weekly |
+|---|---|---|---|---|---|
+| steep, b = 1 | +1.74 | +2.62 | +3.21 | +3.35 | +3.42 |
+| steep, b = 0.75 | +1.01 | +1.52 | +1.86 | +1.95 | +1.99 |
+| baseline, b = 1 | -0.18 | -0.26 | -0.32 | -0.10 | -0.10 |
+| baseline, b = 0.25 | -0.41 | -0.60 | -0.72 | -0.67 | -0.69 |
+| market, b = 0.367 (Fig. 12, 30y) | -0.33 | -0.48 | -0.63 | -0.69 | -0.70 |
+
+This is a numerical error of the discretised scaling, independent of any
+figure, so it is fixed: `volscale.bootstrap_grid` (monthly, within 0.2bp of
+the limit) is now the default in the calibrations, the paper-replication
+examples and tests. The bootstrap was vectorised to make this affordable:
+the recursion telescopes, `Ybar_m K_m = R_m - R_{m-1}` with
+`R_m = sum_{k<=m} Yhat(T_k, T_m) K_k`; identical to the loop to 1e-12
+(`test_vectorised_bootstrap_equals_the_recursion_81`).
+`test_default_bootstrap_grid_is_converged` would have caught the annual
+grid (3.4bp from the weekly one; the default is within 0.5bp). Effect on
+what matched: Figure 12 140.8 -> 140.1 (paper 140.3); baseline b = 0.25
+144.6 -> 143.9 (144.1); Figure 13 mean short rate at 30y with skew 274.8 ->
+282.4 +- 1.6 (280.1, 262,144 paths); sigma = 1.157% unchanged (b = 0).
+
+*Time step: no effect.* With 262,144 paths and two seeds per step size
+(`experiments/a2_step_convergence.py`, monthly grid), 12, 24 and 48 steps a
+year agree within about 1bp. The same runs give the precise remaining gap:
+
+| | paper | 12 / yr | 24 / yr | 48 / yr |
+|---|---|---|---|---|
+| baseline, b = 0.5 | 202.1 | 198.7 +- 0.3 | 198.5 +- 0.3 | 199.0 +- 0.4 |
+| baseline, b = 0.75 | 267.6 | 262.0 +- 0.6 | 261.2 +- 0.6 | 261.8 +- 0.6 |
+| baseline, b = 1 | 323.3 | 317.2 +- 0.9 | 314.9 +- 0.9 | 315.5 +- 0.9 |
+| steep, b = 1 | 186.3 | 183.1 +- 0.5 | 182.0 +- 0.5 | 182.2 +- 0.5 |
+
+(The 65,536-path runs with seed 1 used above happened to be high draws.)
+
+*The cap.* Remark 8 caps "the realized volatility in the simulations ... at
+10x the initial volatility" to deal with moment explosion under stochastic
+volatility. At high skew it binds even with eta = 0: in P the benchmark's
+drift contains the convexity term, quadratic in the rate, and with b = 1 the
+local vol is proportional to the rate, so without a cap the second moment
+blows up. Sensitivity of gamma(40y) to the cap level
+(`experiments/a2_cap_sensitivity.py`, common random numbers, 262,144 paths):
+
+| | paper | 5x | 8x | 10x | 12x | 15x | 20x | 50x |
+|---|---|---|---|---|---|---|---|---|
+| baseline, b = 0.25 | 144.1 | 141.1 | 142.7 | 143.2 | 143.5 | 143.8 | 144.0 | 144.4 |
+| baseline, b = 0.5 | 202.1 | 177.7 | 192.5 | 198.8 | 203.6 | 209.2 | 216.0 | 234.1 |
+| baseline, b = 1 | 323.3 | 228.0 | 287.2 | 317.9 | 344.3 | 378.6 | 426.3 | 616.9 |
+| steep, b = 1 | 186.3 | 157.4 | 175.9 | 183.3 | 188.9 | 195.1 | 202.4 | 218.1 |
+
+Between 10x and 12x, gamma(40y) at b = 1 moves 26bp; the whole remaining
+gap is 5-8bp. The paper's values correspond to effective caps of about
+10.4x (baseline b = 1), 11.1x (steep b = 1) and 11.4x (baseline b = 0.5):
+not one level, so a different cap level is not by itself the explanation,
+and choosing one to fit would be tuning. What "initial volatility" means
+(sigma; sigma_r(0), which at b > 0 involves Y_1(0) / Ybar(0); the local or
+the total volatility), whether the cap is on the volatility or on the
+variance, and where in the step it is applied all move these numbers by
+amounts of this order. The paper's high-skew convexities are therefore
+partly properties of the cap; that the shortfall is 1.7-2.6% and grows with
+b is consistent with that, but we cannot pin it down further without the
+definition.

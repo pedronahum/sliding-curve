@@ -111,3 +111,24 @@ At 5y our smiles match Figure 4 to 1.1bp; at 20y the `b = 1` slope is
 25bp against your 110bp under every scaling and local-vol variant we tried.
 If Figure 4 comes from an earlier version of the pricer, the question
 closes; if not, the code that produced it would show what differs.
+
+---
+
+## Q7 (A2)
+
+**Exactly how is the volatility cap of Remark 8 defined and applied?**
+
+At high skew the cap binds even without stochastic volatility, and the
+convexity depends strongly on it: on the baseline curve at `b = 1`,
+gamma(40y) is 287, 318, 344 and 379bp for caps of 8x, 10x, 12x and 15x
+(`b = 0.5`: 192, 199, 204, 209bp); without a cap it explodes. With the cap
+at 10x `sigma` on the short-rate volatility (local times `sqrt(z)`), applied
+at the start of each step, we are 1.7-2.6% below Figures 3 and 6 at
+`b >= 0.5` and 40 years (e.g. 317 against 323bp), with Monte-Carlo s.e.
+under 1bp and every other setting checked (time step, bootstrap grid,
+curve extension, floors). Is "the initial volatility" `sigma`, the
+short-rate volatility at time 0, or something else; is the cap on the
+volatility or the variance; and is it applied per step to the local part,
+to the total, or to the realised path? Also: what expiry grid did the
+volatility-scaling bootstrap (81) use? On an annual grid it is not
+converged (3.4bp on the steep curve at `b = 1`).

@@ -20,7 +20,7 @@ def run(which, b, n_paths=2**15):
     curve = markets.paper_curve(which)
     m = BASE._replace(b=b)
     t = time_grid(40.0)
-    ybar = volscale.bootstrap_fn(curve, m, np.arange(1.0, 41.0))(t)
+    ybar = volscale.bootstrap_fn(curve, m, volscale.bootstrap_grid(40.0))(t)
     return decompose(simulate(m, curve, t, ybar, jax.random.PRNGKey(1), n_paths=n_paths),
                      m, curve, MATS)
 
@@ -55,7 +55,7 @@ MKT_IDX = [19, 39, 79, 119]
 def run_market(model, n_paths=2**14):
     curve = markets.paper_curve("market")
     t = time_grid(30.0)
-    ybar = volscale.bootstrap_fn(curve, model, np.arange(1.0, 31.0))(t)
+    ybar = volscale.bootstrap_fn(curve, model, volscale.bootstrap_grid(30.0))(t)
     return decompose(simulate(model, curve, t, ybar, jax.random.PRNGKey(1), n_paths=n_paths),
                      model, curve, MKT_MATS)
 
@@ -121,7 +121,7 @@ def test_short_rate_distribution_figure_13():
     stats = {}
     for name, m in (("atm", BASE._replace(sigma=0.011572)),
                     ("skew", BASE._replace(sigma=0.011999, b=0.367))):
-        ybar = volscale.bootstrap_fn(curve, m, np.arange(1.0, 31.0))(t)
+        ybar = volscale.bootstrap_fn(curve, m, volscale.bootstrap_grid(30.0))(t)
         _, r = simulate(m, curve, t, ybar, jax.random.PRNGKey(1), n_paths=2**14,
                         snapshot_times=(20.0, 30.0))
         r = 1e4 * np.asarray(r)

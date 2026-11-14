@@ -55,7 +55,7 @@ def main():
 
     t = time_grid(30.0, steps_per_year=12)
     mats = jnp.arange(1.0, 31.0)
-    grid = np.arange(1.0, 31.0)
+    grid = volscale.bootstrap_grid(30.0)
     decs = {}
     # Figure 12 at the paper's own parameters separates the engine from the fit
     stated = atm.model._replace(sigma=0.011999, b=0.367)

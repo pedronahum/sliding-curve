@@ -54,12 +54,12 @@ def test_papers_skew_parameters_reproduce_its_figure_11_fit_with_mean_referenced
     curve = markets.paper_curve("market")
     offsets, _, paper_fit = markets.paper_smile()
     m = BASE._replace(sigma=0.011999, b=0.367)
-    fn = volscale.bootstrap_fn(curve, m, np.arange(1.0, 21.0))
+    fn = volscale.bootstrap_fn(curve, m, volscale.bootstrap_grid(20.0))
     paper = 1e4 * paper_fit
     mean_ref = vols(m, curve, 20.0, offsets, fn, "mean", 2**16)
     fwd_ref = vols(m, curve, 20.0, offsets, fn, "forward", 2**16)
     assert np.max(np.abs(mean_ref - paper)) < 1.2
     assert np.mean(fwd_ref - paper) > 1.5
     text = vols(m._replace(sigma=0.0112), curve, 20.0, offsets, volscale.bootstrap_fn(
-        curve, m._replace(sigma=0.0112), np.arange(1.0, 21.0)), "mean", 2**15)
+        curve, m._replace(sigma=0.0112), volscale.bootstrap_grid(20.0)), "mean", 2**15)
     assert np.mean(text - paper) < -3.0

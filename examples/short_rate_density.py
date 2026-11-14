@@ -32,7 +32,7 @@ def main():
     t = time_grid(30.0, steps_per_year=12)
     res = {}
     for name, (title, m) in CASES.items():
-        ybar = volscale.bootstrap_fn(curve, m, np.arange(1.0, 31.0))(t)
+        ybar = volscale.bootstrap_fn(curve, m, volscale.bootstrap_grid(30.0))(t)
         _, r = simulate(m, curve, t, ybar, jax.random.PRNGKey(1), n_paths=args.paths,
                         snapshot_times=TIMES)
         r = BP * np.asarray(r)
