@@ -21,7 +21,7 @@ implementation written from the paper; it is not the authors' code.
 | Volatility scaling: zeroth order and bootstrap, eqs. (79)-(81) | `volscale.py` | tested, including its effect on at-the-money volatility |
 | Payer swaption / caplet pricer in the expiry-forward measure | `pricing.py` | Gaussian case matches Jamshidian's exact price |
 | Normal and displaced-lognormal quote conventions | `bachelier.py` | tested |
-| Calibration of `sigma`, `b`, `eta` (autodiff Jacobian, scaling rebuilt inside the objective; finite differences for `eta`) | `calibration.py` | recovers known parameters; reproduces the paper's `sigma` and skew fit |
+| Calibration of `sigma`, `b`, `eta` (autodiff Jacobian, scaling rebuilt inside the objective; `eta` by autodiff through the smooth `lognormal` variance step, B1) | `calibration.py` | recovers known parameters; reproduces the paper's `sigma` and skew fit |
 | Test market: Joshi's displaced-diffusion LMM | `markets.py` | curve reprices the forwards exactly |
 | The paper's curves, smile quotes and plotted results, digitised | `markets.py`, `data/` | reproduce Figures 2, 3, 5-13 except 4 (see below) |
 | Options on the benchmark yield and calibration to their smile | `pricing.py`, `calibration.py` | reproduce the paper's `sigma` and skew fit |
@@ -245,7 +245,7 @@ reproduces the Jensen ratio to 0.1 points.
    inside the sensitivity to the volatility cap (A2); the vol-of-vol gap is
    most plausibly the paper's own sampling noise (A3). Both need the
    authors' input.
-6. Quasi-random numbers (Sobol with a Brownian bridge). B4 used a Gaussian
+3. Quasi-random numbers (Sobol with a Brownian bridge). B4 used a Gaussian
    control variate instead, which removes most of the noise that matters.
 
 ## Choices the paper leaves open
@@ -287,7 +287,7 @@ error, since each device draws its own random numbers.
 
 ```bash
 pip install -e ".[dev]"
-pytest                                   # 57 tests, about three minutes on CPU
+pytest                                   # 101 tests, about four minutes on CPU
 python examples/gaussian_decomposition.py
 python examples/joshi_calibration.py
 python examples/skew_sweep.py

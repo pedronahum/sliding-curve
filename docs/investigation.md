@@ -30,6 +30,11 @@ paper are accurate to about 0.3bp (checked below).
 | A7 | Three-parameter fit | **explained**: eta not identified at Monte-Carlo precision; question to authors |
 | A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
+| B1 | Calibration with eta free | **fixed**: variance step smooth in eta, autodiff |
+| B2 | Calibration speed | **fixed**: 2.6x on one core, 16x on 16 cores, same results |
+| B3 | Gaussian decomposition example | **fixed**: baseline curve, compared with Figure 2 |
+| B4 | Monte-Carlo noise | **fixed**: Gaussian-twin control variate, variance cut 14-28x |
+| B5 | Licence | **options listed**, none chosen (as instructed) |
 | C1 | Multi-factor model | **built**, with tests |
 | C2 | Ho-Lee closed forms | **built**, with tests |
 | C3 | Forward-rate decomposition, Appendix F | **built**, with tests |
