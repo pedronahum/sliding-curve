@@ -38,9 +38,11 @@ def _solve(model, free, resid_fn):
     jac = jax.jit(jax.jacfwd(resid_fn))
     x0 = np.array([getattr(model, n) for n in free], dtype=float)
     lo, hi = (np.array([_BOUNDS[n][k] for n in free]) for k in (0, 1))
-    # The variance scheme matches distributions, not paths, so its samples are
-    # not pathwise differentiable in eta: fall back to finite differences then.
-    ad = "eta" not in free
+    # The quadratic-exponential scheme switches branch as eta moves, so at
+    # fixed random numbers its samples are not differentiable in eta: fall
+    # back to finite differences then. The "lognormal" scheme is smooth in
+    # eta and keeps autodiff.
+    ad = "eta" not in free or model.variance_scheme == "lognormal"
     return least_squares(lambda th: np.asarray(resid(jnp.asarray(th))), x0,
                          jac=(lambda th: np.asarray(jac(jnp.asarray(th)))) if ad else "2-point",
                          diff_step=None if ad else 5e-2,

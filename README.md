@@ -242,7 +242,10 @@ clarify them:
   volatility, and the drift of `x` is the increment that keeps the benchmark
   yield an exact discrete martingale; only the diffusion is Euler.
 - **Variance process.** Andersen's quadratic-exponential scheme (full-truncation
-  Euler lost up to 4% of `E[z]` at `eta = 1.5`).
+  Euler lost up to 4% of `E[z]` at `eta = 1.5`); it agrees with exact CIR
+  sampling to 0.1bp of at-the-money vol. `variance_scheme="lognormal"` is a
+  moment-matched alternative that is smooth in `eta`, so calibrations with
+  `eta` free use autodiff instead of finite differences (B1).
 - **Volatility cap** (Remark 8). Applied to `sigma_r` at 10x `sigma`; the
   local volatility is floored at zero.
 - **Bootstrap grid** `T_m` for the volatility scaling: annual by default.

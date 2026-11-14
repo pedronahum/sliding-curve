@@ -48,6 +48,7 @@ class Model(NamedTuple):
     eta: float = 0.0        # volatility of variance
     kappa_z: float = 0.1    # mean reversion of variance
     vol_cap: float = 10.0   # cap on sigma_r, in multiples of sigma (Remark 8)
+    variance_scheme: str = "qe"   # "qe" (Andersen) or "lognormal" (smooth in eta)
 
 
 def local_vol(model: Model, y1, ybar, z):
@@ -61,15 +62,27 @@ def local_vol(model: Model, y1, ybar, z):
 
 
 def variance_step(model: Model, z, xi, dt):
-    """One step of the variance process (46) by Andersen's quadratic-exponential
-    scheme: the conditional mean and variance of z are matched exactly, so
-    E[z] = 1 holds without time-step bias even when eta is large and z spends
-    much of its time near zero. `xi` are standard normals."""
+    """One step of the variance process (46). `xi` are standard normals.
+
+    Both schemes match the conditional mean and variance of z exactly, so
+    E[z] = 1 holds without time-step bias even when eta is large:
+
+    "qe"         Andersen's quadratic-exponential scheme (default). The best
+                 match to the true distribution near zero, but it switches
+                 branch at psi = 1.5, so at fixed random numbers the sample
+                 jumps as eta moves: not pathwise differentiable in eta.
+    "lognormal"  moment-matched lognormal (Andersen and Brotherton-Ratcliffe),
+                 z' = m exp(-s^2/2 + s xi), s^2 = log(1 + psi). Smooth in eta
+                 and z, so calibrations with eta free can use autodiff.
+    """
     e = jnp.exp(-model.kappa_z * dt)
     b1 = (1.0 - e) / model.kappa_z
     m = 1.0 + (z - 1.0) * e
     s2 = model.eta**2 * (z * e * b1 + 0.5 * model.kappa_z * b1**2)
     psi = jnp.maximum(s2 / m**2, 1e-12)
+    if model.variance_scheme == "lognormal":
+        s = jnp.sqrt(jnp.log1p(psi))
+        return m * jnp.exp(-0.5 * s * s + s * xi)
     # quadratic branch (psi <= 1.5); arguments clamped so the untaken branch
     # stays finite under autodiff
     pq = jnp.minimum(psi, 1.5)

@@ -507,3 +507,57 @@ what one gets when option prices are inverted around a forward that does
 not match the distribution priced, a mismatch that grows with expiry. We
 could not find a mismatch that reproduces it quantitatively and do not
 claim one. Only the authors' Figure 4 code can settle it.
+
+---
+
+## B1. Calibration with eta free: finite differences
+
+**Status: fixed.** `Model(variance_scheme="lognormal")` is a variance step
+that is smooth in eta, so calibrations with eta free use autodiff; QE stays
+the default.
+
+*Why finite differences were not sound.* The quadratic-exponential scheme
+switches branch at psi = 1.5, so at fixed random numbers a path's variance
+jumps as eta moves. Its autodiff derivative ignores the jumps, and finite
+differences straddle them: on the paper's three-parameter point
+(`experiments/b1_variance_schemes.py`, d price / d eta for three strikes) the
+QE finite-difference derivative changes with the step (-0.00148 at h = 1e-3,
+-0.00197 at h = 1e-2, -0.00151 at 1e-4 for the low strike), and disagrees
+with QE autodiff (-0.00189).
+
+*The scheme.* The moment-matched lognormal step of Andersen and
+Brotherton-Ratcliffe: `z' = m exp(-s^2/2 + s xi)`, `s^2 = log(1 + psi)`, with
+the same conditional mean `m` and variance as QE (and as exact CIR), so
+`E[z] = 1` holds without time-step bias. Alternatives considered: exact
+sampling (Poisson-gamma mixture; not differentiable in eta through the
+Poisson count), likelihood-ratio estimators (unbiased but with variance
+growing with the number of steps, 480 here), smoothing QE's branch switch
+(biased at the switch). The lognormal step is the simplest that is both
+smooth and moment-exact.
+
+*Validation.*
+
+| | exact CIR | QE | lognormal |
+|---|---|---|---|
+| E[z(20y)], eta = 1.5 | 0.988 +- 0.018 | 0.992 +- 0.018 | 0.986 +- 0.018 |
+| Var z(20y) (exact 11.04) | 10.59 | 10.59 | 10.46 |
+| E[int z] / sd | 19.78 / 40.8 | 19.69 / 41.0 | 19.68 / 41.0 |
+| P(z(20y) < 1e-3) | 0.454 | 0.512 | 0.160 |
+| 20y ATM vol, eta = 1.0 (4 seeds x 131k) | 59.71 +- 0.07 | 59.60 +- 0.15 | 59.65 +- 0.16 |
+| 20y ATM vol, eta = 1.5 | 53.32 +- 0.06 | 53.37 +- 0.18 | 53.46 +- 0.15 |
+| smile at the paper's 3-parameter point, -200..+200 | 74.7 .. 93.1 | 75.2 .. 93.8 | 75.1 .. 93.9 (within 0.03 of QE) |
+
+The lognormal step puts less mass near zero (as expected of a lognormal),
+but option prices and convexity depend on the integrated variance, whose
+moments it reproduces; prices agree with exact sampling within the s.e.
+
+*Derivative.* Lognormal autodiff against central differences: -0.0019525 /
+-0.0044982 / -0.0045482 against -0.0019524 / -0.0044964 / -0.0045481 at
+h = 1e-4: four digits. `tests/test_variance_schemes.py` checks the
+conditional moments, autodiff against finite differences, agreement with QE,
+and recovery of known (sigma, b, eta) by a fit that uses autodiff.
+
+*Effect* (`experiments/b1_fit_timing.py`, the paper's smile, 32,768 paths,
+same start): QE with finite differences 83s, ending at (1.752%, 0.379,
+1.274); lognormal with autodiff 40s, ending at (1.710%, 0.380, 1.178).
+Both stop on the same valley (A7), with errors within 0.1bp of each other.
