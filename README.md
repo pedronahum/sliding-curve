@@ -23,6 +23,7 @@ implementation written from the paper; it is not the authors' code.
 | Normal and displaced-lognormal quote conventions | `bachelier.py` | tested |
 | Calibration of `sigma`, `b`, `eta` (autodiff Jacobian; finite differences for `eta`) | `calibration.py` | recovers known parameters; `eta` fit not validated |
 | Test market: Joshi's displaced-diffusion LMM | `markets.py` | curve reprices the forwards exactly |
+| The paper's synthetic curves and plotted results, digitised | `markets.py`, `data/` | reproduce Figures 2, 3, 5, 6 (see below) |
 | Skew `b` and stochastic volatility `eta` | `model.py`, `pricing.py` | **validated by model-free identities only** |
 
 Measured (Section 9.1 baseline: `delta = 5`, `kappa = 0.03`, monthly steps
@@ -49,10 +50,39 @@ volatilities to under 0.1bp (`sigma = 1.79%`, `b = 0.52`).
 
 ![Calibration on Joshi's market](docs/joshi_calibration.png)
 
+### Skew and convexity, against the paper's own results (Section 9.2)
+
+The paper's two synthetic curves and its plotted results were read off the
+figure images (`tools/digitise_figures.py`, accurate to a few tenths of a
+basis point). On those curves, with the Section 9.1 settings and the
+unweighted bootstrap scaling, `examples/skew_sweep.py` gives:
+
+![Skew sweep against the paper](docs/skew_sweep.png)
+
+| Convexity at 40y | b = 0 | 0.25 | 0.5 | 0.75 | 1 |
+|---|---|---|---|---|---|
+| Baseline curve, this code | 119.0 | 144.2 | 201.1 | 264.8 | 318.8 |
+| Baseline curve, paper (Figure 3) | 119.0 | 144.1 | 202.1 | 267.6 | 323.3 |
+| Steep curve, this code | 119.0 | 117.7 | 128.1 | 150.8 | 180.1 |
+| Steep curve, paper (Figure 6) | 119.5 | 118.4 | 129.9 | 154.9 | 186.3 |
+
+The expectations-hypothesis yield of Figures 2 and 5 is matched to within
+0.5bp at every maturity. Convexity is matched to within Monte-Carlo error
+at low skew and falls 1-3% short of the paper at high skew and long maturity.
+That shortfall is unexplained; candidates are the curve beyond 40 years
+(extrapolated here), the bootstrap expiry grid and how the volatility cap is
+applied. Forward-centred scaling gives 185bp instead of 320bp at `b = 1`, so
+the bootstrap is what the paper's numbers require.
+
+Figure 4 (smiles by skew) is not reproduced: it prices options on the yield
+itself and the paper does not say in which measure or with which payment
+date. For caplets on the 5y rate, `b = 1` moves the at-the-money price by
+-0.5% at 5y expiry and +3.7% at 20y on the baseline curve.
+
 ### Stochastic volatility and convexity (Section 9.3)
 
-`examples/stochvol_sweep.py` produces the analogues of Figures 7-9 on the
-illustrative curve (about five minutes on a CPU at the default 131,072 paths).
+`examples/stochvol_sweep.py` produces the analogues of Figures 7-9 on an
+illustrative curve (with `b = 0` convexity does not depend on the curve) (about five minutes on a CPU at the default 131,072 paths).
 
 ![Stochastic-volatility sweep](docs/stochvol_sweep.png)
 
@@ -78,15 +108,15 @@ exercises the machinery; it does not reproduce Figures 10-13.
 
 ## Not done yet
 
-1. **Paper inputs.** The synthetic curve is given only as a plot, and the
-   21-Aug-2026 USD swap curve and five 20y x 5y smile quotes are not
-   tabulated. Until then Figures 2-13 can be matched in shape, not in level.
+1. **Section 9.4 market data.** The 21-Aug-2026 USD curve and the five
+   20y x 5y smile quotes are not tabulated. They are plotted (Figures 10-11),
+   so the same digitisation should recover them; not done yet.
 2. **A market with smile curvature.** Joshi's has none, so the `eta` fit is
    exercised but not meaningfully tested. Tables from Brigo and Mercurio could
    not be verified from a primary source and are not included;
    `markets.Quotes` and `Curve.from_zero_nodes` take them once typed in.
-3. **Skew sweep at fixed at-the-money volatility** (Figures 3-6), with `sigma`
-   recalibrated at each `b` on top of the bootstrap scaling.
+3. **Figure 4** (see above), and Figures 7-9 compared point by point with the
+   paper's plots.
 4. **Market-curve bootstrap** from swap quotes.
 5. **Short-rate density** under P (Figure 13).
 6. **Multi-factor model** (`d > 1`), the Ho-Lee checks of Appendix E, and the
@@ -106,6 +136,8 @@ clarify them:
 - **Volatility cap** (Remark 8). Applied to `sigma_r` at 10x `sigma`; the
   local volatility is floored at zero.
 - **Bootstrap grid** `T_m` for the volatility scaling: annual by default.
+- **Synthetic curves.** Splines through yields read off Figures 2 and 5,
+  extended quadratically from 40 to 45 years.
 - **Calibration objective.** Price errors divided by normal vega, on fixed
   random numbers.
 
@@ -113,9 +145,10 @@ clarify them:
 
 ```bash
 pip install -e ".[dev]"
-pytest                                   # 45 tests, about two minutes on CPU
+pytest                                   # 50 tests, about three minutes on CPU
 python examples/gaussian_decomposition.py
 python examples/joshi_calibration.py
+python examples/skew_sweep.py
 python examples/stochvol_sweep.py
 ```
 

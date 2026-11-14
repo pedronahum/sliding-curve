@@ -92,3 +92,38 @@ def joshi_2014(n_rates: int = 41) -> DisplacedLMM:
     # semi-annual grid, and hence the forwards above, are reproduced exactly
     return DisplacedLMM(Curve.from_zero_nodes(times, zeros), forwards, tau,
                         displacement=0.015, a=0.05, b=0.09, c=0.44, d=0.2, beta=2 * 0.0669)
+
+
+# --- the paper's synthetic curves, read off its figures -----------------------
+
+_NODES = np.array([0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20,
+                   22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40])
+
+
+def paper_figures() -> dict:
+    """Curves digitised from the paper's Figures 2, 3, 5 and 6 (basis points on
+    a quarter-year maturity grid; None where one line hides another). Produced
+    by tools/digitise_figures.py; accurate to roughly 0.1-0.3bp."""
+    import json
+    from importlib.resources import files
+    return json.loads(files("slidingcurve").joinpath("data/paper_figures_digitised.json").read_text())
+
+
+def paper_curve(which: str = "baseline") -> Curve:
+    """The paper's synthetic zero curve: 'baseline' (Figure 2) or 'steep'
+    (Figure 5), as a spline through yields read off the figure.
+
+    Two assumptions: the yield at T = 0 is extrapolated linearly from the
+    first two nodes, and beyond the 40 years the figures show the yield is
+    extended quadratically to 45 years (the model needs forwards out to
+    T + delta). Forwards amplify digitisation error by a factor of about T,
+    so nodes are spaced more widely at the long end.
+    """
+    fig = paper_figures()[{"baseline": "fig2", "steep": "fig5"}[which]]
+    t, y = np.asarray(fig["T"]), np.asarray(fig["Y"], dtype=float) * 1e-4
+    nodes = np.interp(_NODES, t, y)
+    y0 = nodes[0] - (nodes[1] - nodes[0]) / (_NODES[1] - _NODES[0]) * _NODES[0]
+    quad = np.polyfit(_NODES[-4:], nodes[-4:], 2)
+    ext = np.array([42.5, 45.0])
+    return Curve.from_zero_nodes(np.concatenate([[0.0], _NODES, ext]),
+                                 np.concatenate([[y0], nodes, np.polyval(quad, ext)]))

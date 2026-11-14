@@ -16,5 +16,8 @@ dev = ["pytest", "matplotlib"]
 [tool.setuptools.packages.find]
 include = ["slidingcurve*"]
 
+[tool.setuptools.package-data]
+slidingcurve = ["data/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
