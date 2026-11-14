@@ -1,0 +1,172 @@
+
+=== plain estimator: 512 replicates of 8192 paths ===
+per point: paper - precise (bp), and the single-run s.d. at 65,536 paths
+  fig3  b=0.25    20y     +0.11  s.d.(64k)  0.04  
+  fig3  b=0.25    40y     +0.82  s.d.(64k)  0.31  
+  fig3  b=0.5     20y     +0.30  s.d.(64k)  0.10  
+  fig3  b=0.5     40y     +3.20  s.d.(64k)  0.98  
+  fig3  b=0.75    20y     +0.31  s.d.(64k)  0.20  A2
+  fig3  b=0.75    40y     +5.38  s.d.(64k)  1.83  A2
+  fig3  b=1.0     20y     +0.31  s.d.(64k)  0.37  A2
+  fig3  b=1.0     40y     +6.48  s.d.(64k)  2.64  A2
+  fig6  b=0.25    20y     +0.00  s.d.(64k)  0.03  
+  fig6  b=0.25    40y     +0.35  s.d.(64k)  0.15  
+  fig6  b=0.5     20y     +0.07  s.d.(64k)  0.07  
+  fig6  b=0.5     40y     +1.13  s.d.(64k)  0.42  
+  fig6  b=0.75    20y     +0.05  s.d.(64k)  0.13  A2
+  fig6  b=0.75    40y     +2.40  s.d.(64k)  0.93  A2
+  fig6  b=1.0     20y     +0.13  s.d.(64k)  0.23  A2
+  fig6  b=1.0     40y     +3.20  s.d.(64k)  1.56  A2
+  fig7  eta=0.5   20y     +0.00  s.d.(64k)  0.10  
+  fig7  eta=0.5   40y     +0.00  s.d.(64k)  0.28  
+  fig7  eta=1.0   20y     +0.00  s.d.(64k)  0.20  
+  fig7  eta=1.0   40y     -1.36  s.d.(64k)  0.58  
+  fig7  eta=1.5   20y     -0.21  s.d.(64k)  0.30  
+  fig7  eta=1.5   40y     -0.50  s.d.(64k)  0.85  
+  fig9  eta=0.5   20y     -0.02  s.d.(64k)  0.26  
+  fig9  eta=0.5   40y     -0.30  s.d.(64k)  0.70  
+  fig9  eta=1.0   20y     -0.06  s.d.(64k)  0.58  
+  fig9  eta=1.0   40y     -0.35  s.d.(64k)  1.60  
+  fig9  eta=1.5   20y     +2.40  s.d.(64k)  0.97  A3
+  fig9  eta=1.5   40y     +6.65  s.d.(64k)  2.68  A3
+  fig8  eta=0.0   -200    +0.49  s.d.(64k)  0.22  A4
+  fig8  eta=0.0   +0      +0.54  s.d.(64k)  0.22  A4
+  fig8  eta=0.0   +200    +0.67  s.d.(64k)  0.23  A4
+  fig8  eta=0.5   -200    -0.17  s.d.(64k)  0.26  
+  fig8  eta=0.5   +0      -0.55  s.d.(64k)  0.23  
+  fig8  eta=0.5   +200    -0.31  s.d.(64k)  0.26  
+  fig8  eta=1.0   -200    +2.00  s.d.(64k)  0.31  
+  fig8  eta=1.0   +0      +1.50  s.d.(64k)  0.26  
+  fig8  eta=1.0   +200    +1.48  s.d.(64k)  0.30  
+  fig8  eta=1.5   -200    +0.63  s.d.(64k)  0.36  
+  fig8  eta=1.5   +0      +0.67  s.d.(64k)  0.28  
+  fig8  eta=1.5   +200    +0.95  s.d.(64k)  0.34  
+  fig11 fit       -200    +0.31  s.d.(64k)  0.29  
+  fig11 fit       -50     -0.45  s.d.(64k)  0.32  
+  fig11 fit       +0      -0.54  s.d.(64k)  0.33  
+  fig11 fit       +50     -0.57  s.d.(64k)  0.34  
+  fig11 fit       +200    -0.60  s.d.(64k)  0.38  
+  fig12 fit       20y     +0.12  s.d.(64k)  0.10  
+  fig12 fit       30y     +0.55  s.d.(64k)  0.34  
+
+structure A: N = 1,814 (95%: 596 - 5,957), -logL 14.67, calibration chi2 43.3 on 29 dof (p = 0.043)
+   fig11 N =       25,911  (750 - 1,122,018)
+   fig12 N =       38,626  (668 - 100,000,000)
+   fig3  N =       10,059  (841 - 50,119)
+   fig6  N =       12,741  (668 - 118,850)
+   fig7  N =       14,455  (1,189 - 251,189)
+   fig8  N =        1,830  (531 - 5,309)
+   fig9  N =    6,349,198  (37,584 - 100,000,000)
+   held out A3: p = 0.117 (at interval ends 0.632, 0.00104); z by point: fig9 eta=1.5 20y +1.9, fig9 eta=1.5 40y +2.1
+   held out A4: p = 0.339 (at interval ends 0.504, 0.233); z by point: fig8 eta=0.0 -200 -0.8, fig8 eta=0.0 +0 +0.1, fig8 eta=0.0 +200 +1.5
+   held out A2: p = 0.997 (at interval ends 0.999, 0.981); z by point: fig3 b=0.75 20y -0.1, fig3 b=0.75 40y -0.1, fig3 b=1.0 20y -0.4, fig3 b=1.0 40y -0.2, fig6 b=0.75 20y -0.4, fig6 b=0.75 40y -0.5, fig6 b=1.0 20y -0.5, fig6 b=1.0 40y -0.7
+
+structure C: N = 5,624 (95%: 2,512 - 12,589), -logL 1.22, calibration chi2 25.0 on 29 dof (p = 0.679)
+   fig11 N =       25,911  (750 - 1,122,018)
+   fig12 N =       38,626  (668 - 100,000,000)
+   fig3  N =       10,059  (841 - 50,119)
+   fig6  N =       12,741  (668 - 118,850)
+   fig7  N =       14,455  (1,189 - 251,189)
+   fig8  N =        1,830  (531 - 5,309)
+   fig9  N =    6,349,198  (37,584 - 100,000,000)
+   held out A3: p = 0.29 (at interval ends 0.574, 0.0657); z by point: fig9 eta=1.5 20y +1.5, fig9 eta=1.5 40y +1.6
+   held out A4: p = 0.0344 (at interval ends 0.113, 0.0198); z by point: fig8 eta=0.0 -200 +2.2, fig8 eta=0.0 +0 +2.5, fig8 eta=0.0 +200 +2.5
+   held out A2: p = 0.995 (at interval ends 0.999, 0.973); z by point: fig3 b=0.75 20y -0.5, fig3 b=0.75 40y -0.3, fig3 b=1.0 20y -0.8, fig3 b=1.0 40y -0.6, fig6 b=0.75 20y -0.5, fig6 b=0.75 40y +0.1, fig6 b=1.0 20y -0.5, fig6 b=1.0 40y -0.2
+
+structure B: N = 13,599 (95%: 6,683 - 25,119), -logL -3.72, calibration chi2 21.3 on 29 dof (p = 0.849)
+   fig11 N =       25,911  (750 - 1,122,018)
+   fig12 N =       38,626  (668 - 100,000,000)
+   fig3  N =        9,014  (1,000 - 39,811)
+   fig6  N =       13,812  (944 - 133,352)
+   fig7  N =       29,944  (2,818 - 177,828)
+   fig8  N =        8,207  (2,371 - 22,387)
+   fig9  N =  110,516,587  (59,566 - 100,000,000)
+   held out A3: p = 0.526 (at interval ends 0.728, 0.307); z by point: fig9 eta=1.5 20y +1.1, fig9 eta=1.5 40y +1.1
+   held out A4: p = 0.697 (at interval ends 0.856, 0.503); z by point: fig8 eta=0.0 -200 +0.9, fig8 eta=0.0 +0 +1.0, fig8 eta=0.0 +200 +1.1
+   held out A2: p = 0.58 (at interval ends 0.9, 0.182); z by point: fig3 b=0.75 20y +0.6, fig3 b=0.75 40y +1.3, fig3 b=1.0 20y +0.4, fig3 b=1.0 40y +1.1, fig6 b=0.75 20y +0.1, fig6 b=0.75 40y +1.2, fig6 b=1.0 20y +0.2, fig6 b=1.0 40y +0.9
+
+=== antithetic estimator: 512 replicates of 16384 paths ===
+per point: paper - precise (bp), and the single-run s.d. at 65,536 paths
+  fig3  b=0.25    20y     +0.11  s.d.(64k)  0.01  
+  fig3  b=0.25    40y     +0.81  s.d.(64k)  0.19  
+  fig3  b=0.5     20y     +0.30  s.d.(64k)  0.06  
+  fig3  b=0.5     40y     +3.16  s.d.(64k)  0.79  
+  fig3  b=0.75    20y     +0.30  s.d.(64k)  0.16  A2
+  fig3  b=0.75    40y     +5.32  s.d.(64k)  1.59  A2
+  fig3  b=1.0     20y     +0.28  s.d.(64k)  0.32  A2
+  fig3  b=1.0     40y     +6.41  s.d.(64k)  2.37  A2
+  fig6  b=0.25    20y     +0.00  s.d.(64k)  0.01  
+  fig6  b=0.25    40y     +0.35  s.d.(64k)  0.06  
+  fig6  b=0.5     20y     +0.07  s.d.(64k)  0.04  
+  fig6  b=0.5     40y     +1.11  s.d.(64k)  0.31  
+  fig6  b=0.75    20y     +0.04  s.d.(64k)  0.09  A2
+  fig6  b=0.75    40y     +2.35  s.d.(64k)  0.80  A2
+  fig6  b=1.0     20y     +0.12  s.d.(64k)  0.19  A2
+  fig6  b=1.0     40y     +3.13  s.d.(64k)  1.42  A2
+  fig7  eta=0.5   20y     +0.00  s.d.(64k)  0.05  
+  fig7  eta=0.5   40y     +0.00  s.d.(64k)  0.18  
+  fig7  eta=1.0   20y     +0.00  s.d.(64k)  0.17  
+  fig7  eta=1.0   40y     -1.45  s.d.(64k)  0.53  
+  fig7  eta=1.5   20y     -0.24  s.d.(64k)  0.29  
+  fig7  eta=1.5   40y     -0.56  s.d.(64k)  0.87  
+  fig9  eta=0.5   20y     -0.07  s.d.(64k)  0.15  
+  fig9  eta=0.5   40y     -0.46  s.d.(64k)  0.43  
+  fig9  eta=1.0   20y     -0.15  s.d.(64k)  0.53  
+  fig9  eta=1.0   40y     -0.62  s.d.(64k)  1.50  
+  fig9  eta=1.5   20y     +2.35  s.d.(64k)  0.95  A3
+  fig9  eta=1.5   40y     +6.51  s.d.(64k)  2.69  A3
+  fig8  eta=0.0   -200    +0.49  s.d.(64k)  0.29  A4
+  fig8  eta=0.0   +0      +0.53  s.d.(64k)  0.30  A4
+  fig8  eta=0.0   +200    +0.66  s.d.(64k)  0.29  A4
+  fig8  eta=0.5   -200    -0.14  s.d.(64k)  0.28  
+  fig8  eta=0.5   +0      -0.54  s.d.(64k)  0.26  
+  fig8  eta=0.5   +200    -0.32  s.d.(64k)  0.27  
+  fig8  eta=1.0   -200    +2.03  s.d.(64k)  0.32  
+  fig8  eta=1.0   +0      +1.52  s.d.(64k)  0.25  
+  fig8  eta=1.0   +200    +1.48  s.d.(64k)  0.30  
+  fig8  eta=1.5   -200    +0.65  s.d.(64k)  0.36  
+  fig8  eta=1.5   +0      +0.69  s.d.(64k)  0.27  
+  fig8  eta=1.5   +200    +0.95  s.d.(64k)  0.33  
+  fig11 fit       -200    +0.37  s.d.(64k)  0.35  
+  fig11 fit       -50     -0.40  s.d.(64k)  0.38  
+  fig11 fit       +0      -0.49  s.d.(64k)  0.39  
+  fig11 fit       +50     -0.53  s.d.(64k)  0.39  
+  fig11 fit       +200    -0.56  s.d.(64k)  0.41  
+  fig12 fit       20y     +0.12  s.d.(64k)  0.04  
+  fig12 fit       30y     +0.54  s.d.(64k)  0.22  
+
+structure A: N = 1,120 (95%: 376 - 3,548), -logL 15.28, calibration chi2 43.3 on 29 dof (p = 0.043)
+   fig11 N =      105,055  (1,496 - 100,000,000)
+   fig12 N =       15,558  (251 - 100,000,000)
+   fig3  N =        5,418  (376 - 29,854)
+   fig6  N =        5,583  (178 - 59,566)
+   fig7  N =        8,221  (708 - 133,352)
+   fig8  N =        2,116  (631 - 5,957)
+   fig9  N =      446,258  (11,220 - 100,000,000)
+   held out A3: p = 0.286 (at interval ends 0.895, 0.00523); z by point: fig9 eta=1.5 20y +1.5, fig9 eta=1.5 40y +1.6
+   held out A4: p = 0.293 (at interval ends 0.649, 0.0822); z by point: fig8 eta=0.0 -200 +1.1, fig8 eta=0.0 +0 +0.6, fig8 eta=0.0 +200 +1.9
+   held out A2: p = 0.997 (at interval ends 1, 0.96); z by point: fig3 b=0.75 20y -0.2, fig3 b=0.75 40y -0.3, fig3 b=1.0 20y -0.4, fig3 b=1.0 40y -0.1, fig6 b=0.75 20y -0.5, fig6 b=0.75 40y -0.8, fig6 b=1.0 20y -0.5, fig6 b=1.0 40y -0.9
+
+structure C: N = 4,747 (95%: 2,113 - 10,000), -logL 0.18, calibration chi2 25.4 on 29 dof (p = 0.656)
+   fig11 N =      105,055  (1,496 - 100,000,000)
+   fig12 N =       15,558  (251 - 100,000,000)
+   fig3  N =        5,418  (376 - 29,854)
+   fig6  N =        5,583  (178 - 59,566)
+   fig7  N =        8,221  (708 - 133,352)
+   fig8  N =        2,116  (631 - 5,957)
+   fig9  N =      446,258  (11,220 - 100,000,000)
+   held out A3: p = 0.314 (at interval ends 0.595, 0.0893); z by point: fig9 eta=1.5 20y +1.4, fig9 eta=1.5 40y +1.5
+   held out A4: p = 0.000991 (at interval ends 0.003, 0.00178); z by point: fig8 eta=0.0 -200 +3.1, fig8 eta=0.0 +0 +3.1, fig8 eta=0.0 +200 +3.3
+   held out A2: p = 0.979 (at interval ends 0.995, 0.936); z by point: fig3 b=0.75 20y -0.4, fig3 b=0.75 40y -0.6, fig3 b=1.0 20y -0.8, fig3 b=1.0 40y -0.8, fig6 b=0.75 20y -0.5, fig6 b=0.75 40y -0.4, fig6 b=1.0 20y -0.7, fig6 b=1.0 40y -0.8
+
+structure B: N = 10,532 (95%: 5,012 - 19,953), -logL -2.51, calibration chi2 24.6 on 29 dof (p = 0.699)
+   fig11 N =      105,055  (1,496 - 100,000,000)
+   fig12 N =       15,558  (251 - 100,000,000)
+   fig3  N =        4,509  (422 - 22,387)
+   fig6  N =        5,928  (316 - 63,096)
+   fig7  N =       22,214  (2,239 - 118,850)
+   fig8  N =        7,936  (2,239 - 21,135)
+   fig9  N =      428,886  (13,335 - 100,000,000)
+   held out A3: p = 0.616 (at interval ends 0.793, 0.401); z by point: fig9 eta=1.5 20y +1.0, fig9 eta=1.5 40y +1.0
+   held out A4: p = 0.865 (at interval ends 0.932, 0.754); z by point: fig8 eta=0.0 -200 +0.6, fig8 eta=0.0 +0 +0.7, fig8 eta=0.0 +200 +0.8
+   held out A2: p = 0.637 (at interval ends 0.929, 0.208); z by point: fig3 b=0.75 20y +0.6, fig3 b=0.75 40y +1.3, fig3 b=1.0 20y +0.3, fig3 b=1.0 40y +1.1, fig6 b=0.75 20y +0.1, fig6 b=0.75 40y +1.2, fig6 b=1.0 20y +0.2, fig6 b=1.0 40y +0.9

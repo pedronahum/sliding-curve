@@ -203,7 +203,8 @@ def blocks(structure):
 def analyse():
     z = np.load(NPZ)
     paper = np.array([q[3] for q in Q])
-    held = np.array([q[4] for q in Q], dtype=object)
+    ok = ~np.isnan(paper)                     # points hidden in the figure (lines crossing) are not data
+    held = np.array([q[4] if o else "missing" for q, o in zip(Q, ok)], dtype=object)
     cal = np.array([h is None for h in held])
     report = {}
     for est, n_paths in (("plain", int(z["n_rep"]) // 2), ("antithetic", int(z["n_rep"]))):
@@ -211,6 +212,7 @@ def analyse():
         R = X.shape[0]
         mu, S = X.mean(0), np.cov(X, rowvar=False)
         d = paper - mu
+        d = np.where(ok, d, 0.0)                    # unused (excluded from every set)
         D = DIGITISATION**2 * np.eye(len(Q))
         print(f"\n=== {est} estimator: {R} replicates of {n_paths} paths ===")
         print("per point: paper - precise (bp), and the single-run s.d. at 65,536 paths")
@@ -231,7 +233,7 @@ def analyse():
                 v = np.array([nll(g, idx) for g in grid])
                 g0 = grid[np.argmin(v)]
                 o = optimize.minimize_scalar(lambda g: nll(g, idx), bounds=(g0 - 0.1, g0 + 0.1), method="bounded")
-                inside = grid[v - o.fun <= stats.chi2.ppf(0.95, 1) / 2]
+                inside = grid[v - min(o.fun, v.min()) <= stats.chi2.ppf(0.95, 1) / 2]
                 return float(np.exp(o.x)), float(np.exp(inside.min())), float(np.exp(inside.max())), o.fun
 
             ic = np.where(cal)[0]

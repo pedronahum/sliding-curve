@@ -22,8 +22,8 @@ paper are accurate to about 0.3bp (checked below).
 |---|---|---|
 | A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
 | A1 | Figure 4 | **paper inconsistency** (contradicts the text, Figure 8 and the model's Gaussian limit); question to authors |
-| A2 | Convexity at high skew | **partly fixed** (bootstrap grid); rest bounded by the cap definition; question to authors |
-| A3 | Figure 9 at eta = 1.5 | **unresolved**, bounded; question to authors |
+| A2 | Convexity at high skew | **partly fixed** (bootstrap grid); rest bounded by the cap definition, or the paper's sampling noise if its skew curves shared a seed; question to authors |
+| A3 | Figure 9 at eta = 1.5 | **unresolved**, bounded; consistent with the paper's own sampling noise at the path count its other figures imply; question to authors |
 | A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); **paper inconsistency** (level) |
 | A5 | Section 8.2 uplift | **explained** |
 | A6 | Skew fit | **explained** to within Monte-Carlo noise; question to authors |
@@ -71,7 +71,10 @@ Figure 12 gamma(30y) 140.5 +- 0.2 against 140.3. Figure 9 at eta = 0.5 and
 Figure 4, which contradicts the paper's text, its Figure 8 and the Gaussian
 limit (A1, Q6); convexity at b = 1 and 40y 1.7-2.6% low, inside the
 sensitivity to the undefined cap (A2, Q7); Figure 9 at eta = 1.5, 202.7 +-
-1.3 against 212.8bp (A3, Q2); the Figure 8 eta = 0 level, 71.4 against the
+1.3 against 212.8bp (A3, Q2). Estimated from the paper's own scatter, A3,
+A2 and the A4 level are all consistent with its sampling noise at about
+10,000 paths, but no single path count fits every figure under every
+seeding, so this is a sharper question, not an answer; the Figure 8 eta = 0 level, 71.4 against the
 closed form's 70.9bp (A4, Q2); the skew fit's weights and path count (A6, Q2-Q3);
 eta's identification in the three-parameter fit (A7, Q5); the curve beyond
 the plotted range, a 7.5bp spread in Y_eh at 30y across extensions (A8, Q4); and the strike
@@ -372,6 +375,66 @@ them. That is the only explanation left standing and it cannot be checked
 without the paper's path count and seeds. Section B4 shows that a control
 variate does not help here (the twin does not see z); a conditional
 (Rao-Blackwell) estimator would.
+
+*The paper's path count, estimated from its own noise*
+(`experiments/a3_paper_path_count.py`; plan, data, held-out points and
+decision rules committed in `2a07a1d` before the first run). The paper does
+not state its path count. If its Monte-Carlo figures differ from precise
+values only by its own sampling error, one N should explain the scatter of
+every undisputed point, and the disputed ones should be ordinary draws.
+Data: 37 points of Figures 3, 6, 7, 8, 9, 11 and 12 (gamma at 20/40y, smiles
+at three strikes, the Figure 11 fit), against precise values and single-run
+covariances from 512 replicate runs of this code (8,192 plain or 16,384
+antithetic paths each), plus 0.3bp digitisation. N is fitted by maximum
+likelihood on the undisputed points and the disputed ones are tested
+conditionally: A3 (Figure 9, eta = 1.5), A4 (Figure 8, eta = 0) and A2
+(Figures 3 and 6, b >= 0.75). Three ways the paper may have shared seeds:
+one for everything (A), one per figure (C), one per curve (B). Four points
+are hidden in the figures where lines cross and are dropped (a bug fix after
+the first run: they were NaN).
+
+| seeds | estimator | N (95%) | fit p | per-figure N consistent | A3 p | A4 p | A2 p | pre-registered verdict |
+|---|---|---|---|---|---|---|---|---|
+| one | plain | 1.8k (0.6-6.0k) | 0.04 | no | 0.12 | 0.34 | 1.00 | refuted |
+| one | antithetic | 1.1k (0.4-3.5k) | 0.04 | no | 0.29 | 0.29 | 1.00 | refuted |
+| per figure | plain | 5.6k (2.5-12.6k) | 0.68 | no | 0.29 | 0.03 | 1.00 | refuted |
+| per figure | antithetic | 4.7k (2.1-10.0k) | 0.66 | no | 0.31 | 0.001 | 0.98 | refuted |
+| per curve | plain | 13.6k (6.7-25.1k) | 0.85 | no | 0.53 | 0.70 | 0.58 | refuted |
+| per curve | antithetic | 10.5k (5.0-20.0k) | 0.70 | yes (13-21k) | 0.62 | 0.87 | 0.64 | **supported** |
+
+(N counts paths; p values for the held-out groups at the fitted N. Per-curve
+seeds have the highest likelihood, by about 5 log-units over per-figure.)
+
+What this shows:
+
+- **A single path count is not established.** The rules fixed in advance
+  give "supported" in one variant of six. Every other variant fails on the
+  same conflict: Figure 8 (the eta = 1.0 smile sits 1.5-2.0bp above the
+  precise value at all three strikes) wants a few thousand paths, while
+  Figure 9's eta = 0.5 and 1.0 curves sit within 0.35bp of the precise
+  values, which a few thousand paths would rarely produce. Different path
+  counts per figure would fit, but that was not the hypothesis tested and
+  would be fitted after the fact.
+- **A3 is consistent with sampling noise wherever the rest of the data put
+  N.** In all six variants 212.8bp is an ordinary draw at the fitted N
+  (p 0.12-0.62; conditional z +1.0 to +2.1 at 40y). It is not if the paper
+  used 25,000 paths or more (p 0.001 at the top of the one-seed interval).
+- **A4 depends on the seeding.** The eta = 0 level is ordinary under per-
+  curve seeds (p 0.70, 0.87) but not under per-figure seeds with antithetic
+  paths (p 0.001), where Figure 8's other smiles fix the shared error.
+- **A2 is consistent with noise if a figure's skew curves shared a seed.**
+  At 40y the paper is above the precise value for every skew in both
+  figures, growing with b (Figure 3: +0.8, +3.2, +5.4, +6.5; Figure 6: +0.4,
+  +1.1, +2.4, +3.2). Independent seeds per curve would give that sign
+  pattern about one time in 256; a seed shared across b gives it naturally,
+  and then b >= 0.75 is predicted from b <= 0.5 (p 0.98-1.00). A bias that
+  grows with b (the cap, Q7) predicts the same pattern; one run per figure
+  cannot tell them apart.
+
+The status stays **unresolved**, now with the evidence that would settle
+it: the paper's path count, whether its paths were antithetic, and whether
+curves in one figure shared a seed. With 10,000 or so paths and per-curve
+seeds, A3, A4 and A2 would all be sampling noise.
 
 ---
 

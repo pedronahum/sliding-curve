@@ -47,6 +47,18 @@ your 212.8; our single-run spread is 2.6bp at 65,536 paths and would be
 (1.1890%, 0.353, single-fit spread 0.0055% and 0.0027), and where your
 three-parameter fit stopped (A7).
 
+We have since estimated your path count from the scatter of your own
+figures (37 points of Figures 3, 6-9, 11 and 12 against precise values;
+`investigation.md`, A3). With independent seeds per curve and antithetic
+paths, about 10,500 paths (95%: 5,000-20,000) fit every figure, and Figure 9
+at eta = 1.5, the eta = 0 level of Figure 8 and the high-skew curves of
+Figures 3 and 6 are then all ordinary draws (p = 0.62, 0.87, 0.64). Under
+other seedings no single path count fits Figures 8 and 9 together: your
+eta = 1.0 smile in Figure 8 sits 1.5-2.0bp above the precise one, while
+Figure 9 at eta = 0.5 and 1.0 sits within 0.35bp. So, specifically: how
+many paths per figure, were they antithetic, and did the curves of one
+figure (the skews of Figures 3 and 6, the etas of Figures 7-9) share a seed?
+
 ---
 
 ## Q3 (A6, A10)
@@ -132,3 +144,9 @@ volatility or the variance; and is it applied per step to the local part,
 to the total, or to the realised path? Also: what expiry grid did the
 volatility-scaling bootstrap (81) use? On an annual grid it is not
 converged (3.4bp on the steep curve at `b = 1`).
+
+An alternative to a different cap: at 40 years your Figures 3 and 6 lie
+above our precise values for every skew, by an amount growing with b
+(+0.8, +3.2, +5.4, +6.5bp on the baseline curve). If the curves of a figure
+shared one seed, that is what a single run of about 5,000-10,000 paths
+looks like (Q2); if they did not, it points to the cap.
