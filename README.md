@@ -181,9 +181,13 @@ convexity state `y` is random under stochastic volatility. The paper's
 (70.9bp) that reproduces its own Section 9.4 `sigma`. Smile shapes agree to
 1-2bp, with this code's minimum sitting about 50bp to the right.
 
-Section 8.2 also quotes an uplift of about 15%, 16% and 17.5% for `eta = 0.6`
-over ten years at `kappa = 0`, `0.03` and `0.05`; with caplets on the 5y rate
-this code gives 13.4%, 15.1% and 16.4%.
+Section 8.2 quotes an uplift of about 15%, 16% and 17.5% for `eta = 0.6`
+over ten years at `kappa = 0`, `0.03` and `0.05`. Those are exactly the
+Jensen ratio `E(V) / E(sqrt V)^2` of a driftless rate on the CIR clock
+(14.5%, 16.3%, 17.5%; A5). The full model gives 0.6-0.7 points less (13.85
++- 0.07% at `kappa = 0`), because the benchmark yield's forward-measure
+drift is itself driven by the realised variance; made driftless, the model
+reproduces the Jensen ratio to 0.1 points.
 
 ## Not done yet
 

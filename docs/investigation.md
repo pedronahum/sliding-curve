@@ -21,6 +21,7 @@ paper are accurate to about 0.3bp (checked below).
 | ID | Issue | Status |
 |---|---|---|
 | A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
+| A5 | Section 8.2 uplift | **explained** |
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
 
 ---
@@ -140,3 +141,44 @@ At `b = 0.367` (`experiments/a6_skew_fit.py`, `a10_text_sigma.py`):
 either (the annual par swap would need 1.10% at `b = 0`). The test
 `test_papers_skew_parameters_reproduce_its_figure_11_fit_with_mean_referenced_strikes`
 checks both values.
+
+---
+
+## A5. Section 8.2: uplift for eta = 0.6 over ten years
+
+**Status: explained.** Section 8.2 computes the uplift from the Jensen gap
+(65) of a driftless rate run on a stochastic clock; this code reports the
+full model recalibrated to an at-the-money option. They are different
+quantities and both are right. `experiments/a5_uplift.py` (variance weights
+`exp(-2 kappa (T - t))`, i.e. the weight with which variance at t reaches
+the rate at expiry, `kappa_z = 0.1`, `T = 10`):
+
+| kappa | relative variance | 1 + rel. var / 4 | **exact E(V) / E(sqrt V)^2** | paper | full model, yield option | full model, caplet |
+|---|---|---|---|---|---|---|
+| 0 | 0.605 | 15.1% | **14.52 +- 0.03%** | ~15% | 13.49% | 14.16% |
+| 0.03 | 0.678 | 17.0% | **16.27 +- 0.03%** | ~16% | 15.41% | 15.79% |
+| 0.05 | 0.728 | 18.2% | **17.51 +- 0.04%** | 17.5% | 16.73% | 16.99% |
+
+The paper's numbers are the exact Jensen ratio (not the second-order
+approximation, which overstates by 0.6-0.7 points); its ς² ≈ 0.6 is our
+0.605. The full-model columns above are single runs; repeated over four
+seeds at 131,072 paths the kappa = 0 yield-option uplift is 13.85 +- 0.07%
+(single-run spread 0.15), so the 13.49% of a single 65,536-path run was a
+low draw.
+
+Where the remaining 0.6-0.7 points go (`experiments/a5_drift_attribution.py`,
+same variance paths and rate noise throughout):
+
+| kappa | exact Jensen | model rate made driftless | + forward-measure drift (y term, -sigma_r^2 B) | same, sigma solved exactly | full model |
+|---|---|---|---|---|---|
+| 0 | 14.52% | 14.44% | 14.15% | 14.09% | 13.85 +- 0.07% |
+| 0.03 | 16.27% | 16.17% | 15.99% | 15.94% | |
+| 0.05 | 17.51% | 17.41% | 17.25% | 17.21% | |
+
+The driftless model rate reproduces the Jensen ratio (to 0.1 points of
+time discretisation). The drift that the benchmark yield has in the forward
+measure is itself driven by the realised variance and takes another 0.3-0.4
+points; the rest (0.2 points at kappa = 0) is within 1.6 single-run
+standard deviations. Nothing is wrong on either side: Section 8.2 states the
+idealised effect, the model includes the drift. The README previously set
+one against the other.

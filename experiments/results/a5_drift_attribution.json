@@ -1,0 +1,17 @@
+{
+ "0.0": {
+  "driftless": 0.14435409118252696,
+  "with drift": 0.1414623014058245,
+  "with drift, sigma solved": 0.1409313411546138
+ },
+ "0.03": {
+  "driftless": 0.16172447211822827,
+  "with drift": 0.15986066052853198,
+  "with drift, sigma solved": 0.15944381540526642
+ },
+ "0.05": {
+  "driftless": 0.17407622016251456,
+  "with drift": 0.17252098827949136,
+  "with drift, sigma solved": 0.1721429984082521
+ }
+}
