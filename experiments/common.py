@@ -186,3 +186,54 @@ def paper_curve_ext(which, ext="quadratic"):
     if ext == "quadratic":       # library: exactly two extra nodes
         extra, ev = extra[:2], ev[:2]
     return Curve.from_zero_nodes(np.concatenate([[0.0], nodes_t, extra]), np.concatenate([[y0], nodes, ev]))
+
+
+# --- exact CIR sampling and rate dynamics driven by given variance paths -------
+# (A3 and B1: compare variance schemes against exact draws on the same grid)
+T, SPY = 20.0, 24
+n_steps = int(T * SPY)
+dt = T / n_steps
+
+
+def exact_cir(eta, kz, n, seed):
+    rng = np.random.default_rng(seed)
+    c = eta**2 * (1 - np.exp(-kz * dt)) / (4 * kz)
+    d = 4 * kz / eta**2
+    z = np.ones((n_steps + 1, n))
+    for i in range(n_steps):
+        z[i + 1] = c * rng.noncentral_chisquare(d, z[i] * np.exp(-kz * dt) / c)
+    return z
+
+
+def scheme_paths(model, n, key):
+    def step(z, i):
+        xi = jax.random.normal(jax.random.fold_in(key, i), (n,))
+        zn = variance_step(model, z, xi, dt)
+        return zn, zn
+    _, zs = jax.lax.scan(step, jnp.ones(n), jnp.arange(n_steps))
+    return np.vstack([np.ones((1, n)), np.asarray(zs)])
+
+
+def yield_from_z(model, curve, ybar_fn, zpaths, key):
+    """Terminal Y_1(T) in Q^(T+delta) driven by given variance paths."""
+    kappa, delta = model.kappa, model.delta
+    Ad, Bd = A(kappa, delta), B(kappa, delta)
+    c_y = Bd**2 / (2 * delta)
+    e1, b1 = jnp.exp(-kappa * dt), B(kappa, dt)
+    e2, b2 = jnp.exp(-2 * kappa * dt), B(2 * kappa, dt)
+    t = jnp.arange(n_steps) * dt
+    n = zpaths.shape[1]
+    xs = (jnp.arange(n_steps), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, T + delta - t),
+          jnp.asarray(zpaths[:-1]))
+
+    def step(state, inp):
+        x, y = state
+        i, y0, yb, g, z = inp
+        vol = local_vol(model, y0 + Ad * x + c_y * y, yb, z)
+        xi = jax.random.normal(jax.random.fold_in(key, i), (n,))
+        return (x * e1 + (y - vol**2 * g) * b1 + vol * jnp.sqrt(b2) * xi, y * e2 + vol**2 * b2), None
+
+    (x, y), _ = jax.lax.scan(step, (jnp.zeros(n), jnp.zeros(n)), xs)
+    return np.asarray(curve.fwd_yield(T, T + delta) + Ad * x + c_y * y)
+
+

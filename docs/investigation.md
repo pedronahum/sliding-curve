@@ -21,6 +21,7 @@ paper are accurate to about 0.3bp (checked below).
 | ID | Issue | Status |
 |---|---|---|
 | A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
+| A3 | Figure 9 at eta = 1.5 | **unresolved**, bounded; question to authors |
 | A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); **paper inconsistency** (level) |
 | A5 | Section 8.2 uplift | **explained** |
 | A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
@@ -257,3 +258,66 @@ the quadratic one to 0.1bp. The 1.5bp residual at 30y is therefore within
 what the unpublished part of the curve leaves open; only the authors' curve
 beyond 30 (and 40) years can close it. Inside the plotted range, at 20y and
 25y, all four extensions agree with each other and with the paper to 0.3bp.
+
+---
+
+## A3. Figure 9 at eta = 1.5
+
+**Status: unresolved, bounded.** This code gives 202.7 +- 1.3bp at 40y where
+the paper plots 212.8bp; eta = 0.5 and 1.0 match (133.7 vs 133.6, 165.5 vs
+166.7).
+
+*The README's hypothesis is refuted.* It said the paper's convexity ratios
+equal the squared ratios of its at-the-money vols, as if sigma were
+rescaled linearly. They do not: at eta = 0.5 the paper's ratio is 1.121
+against a squared vol ratio of 1.166 (1.169 with 71.5bp). This code's exact
+recalibration gives 1.124 there, matching the paper.
+
+*Variants, one at a time* (`experiments/a3_stochvol_variants.py`; sigma
+recalibrated at each eta to the eta = 0 ATM vol; gamma(40y), paper 133.6 /
+166.7 / 212.8):
+
+| variant | eta = 0.5 | eta = 1.0 | eta = 1.5 |
+|---|---|---|---|
+| library (QE, cap 10x, 24 / 12 steps a year) | 133.7 | 165.5 | 202.7 |
+| pricing seed 1 / 2 / 3 | 133.5 / 133.3 / 134.3 | 165.0 / 164.9 / 168.0 | 203.8 / 202.3 / 208.0 |
+| recalibrate to 71.5bp (paper's text) | **136.1** | 168.4 | 206.2 |
+| no cap; cap in pricing only; in decomposition only; 20x | 133.7 | 165.5 | 202.7 |
+| cap 5x | 133.7 | 165.5 | 201.0 |
+| 52 steps a year in both | 133.8 | 165.0 | 203.8 |
+| full-truncation Euler for z | 133.7 | 166.0 | 205.0 |
+| reflection Euler for z | 133.7 | **153.2** | **160.1** |
+
+- The cap never binds at `b = 0` for eta <= 1.5 (`sqrt(z) > 10` is too rare
+  to move any digit), so neither its level nor where it is applied matters.
+- Reflection inflates E[z], so the at-the-money vol *rises* with eta (85.8bp
+  at eta = 1.5): ruled out by Figure 8.
+- Recalibrating to 71.5bp breaks eta = 0.5.
+- No variant reaches 212.8 without breaking eta = 0.5 or 1.0.
+
+*Variance scheme against exact sampling.* `experiments/a3_exact_cir.py`
+drives the same rate dynamics with exact CIR draws (noncentral chi-square)
+and with the two schemes, four independent seeds of 131,072 paths each,
+20y x 5y ATM vol at `sigma = 1%`, `b = 0`:
+
+| eta | exact CIR | QE (library) | lognormal (B1) | paper (Figure 8) |
+|---|---|---|---|---|
+| 1.0 | 59.71 +- 0.07 | 59.60 +- 0.15 | 59.65 +- 0.16 | 60.87 |
+| 1.5 | 53.32 +- 0.06 | 53.37 +- 0.18 | 53.46 +- 0.15 | 53.58 |
+
+QE is unbiased at the 0.1bp level against exact sampling, so the scheme is
+not the cause. The paper's Figure 8 sits +1.2bp and +0.3bp above these
+precise values (and -0.7bp below this code's single run at eta = 0.5):
+non-monotone in eta, as independent sampling errors would be.
+
+*Noise.* The quoted s.e. (1.3bp) covers the decomposition only. The
+recalibrated sigma inherits the pricing noise: over four pricing seeds
+gamma(40y) is 202.7, 203.8, 202.3, 208.0 (mean 204.2 +- 1.3, spread 2.6bp).
+The paper is 8.6bp above that mean: about three single-run standard
+deviations at 65,536 paths, so not explained by this code's noise.
+If the paper's runs used 4k-16k paths, as its eta = 0 level suggests (A4),
+its own single-run spread would be 5-10bp and 212.8 would be within two of
+them. That is the only explanation left standing and it cannot be checked
+without the paper's path count and seeds. Section B4 shows that a control
+variate does not help here (the twin does not see z); a conditional
+(Rao-Blackwell) estimator would.

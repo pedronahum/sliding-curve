@@ -177,11 +177,14 @@ yield option as the benchmark:
 | 1.5 | 53.8 / 53.6bp | 202.7 / 212.8bp |
 
 Figure 7 (convexity unchanged by `eta` at fixed `sigma`) is reproduced.
-Figure 9 is matched to within 1% up to `eta = 1` and is 5% low at
-`eta = 1.5`. The paper's convexity ratios equal the squared ratios of its
-at-the-money vols, as if `sigma` were rescaled linearly; here `sigma` is
-recalibrated on the simulated option, which is not exactly linear because the
-convexity state `y` is random under stochastic volatility.
+Figure 9 is matched to within 1% up to `eta = 1`; at `eta = 1.5` this code
+gives 204.2 +- 1.3bp (four pricing seeds) against 212.8 (A3). The gap is not
+the volatility cap (it never binds at `b = 0`), the time step, or the
+variance scheme (quadratic-exponential agrees with exact CIR sampling to
+0.1bp of at-the-money vol), and recalibrating to the paper's 71.5bp breaks
+`eta = 0.5`. The paper's ratios are not squared at-the-money vol ratios
+either (that hypothesis fails at `eta = 0.5`). What remains is sampling
+noise in the paper's run, which only its path count can confirm.
 
 Figure 8's smiles agree to 0.4-1.5bp, and on a common axis of absolute
 strikes their minima coincide (about 400bp; the smile above plots both
