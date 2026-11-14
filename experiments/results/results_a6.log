@@ -1,0 +1,15 @@
+market quotes (bp):       [77.13 79.8  82.01 84.77 95.18]
+paper's fitted vols (bp): [73.35 79.8  82.01 84.23 90.72]
+
+1. smile at stated parameters vs the paper's fitted vols
+  sigma 1.1999%, strikes at mean   : [73.   80.22 82.56 84.81 91.37]  minus paper fit [-0.35  0.42  0.55  0.58  0.65]  (s.e. 0.60)
+  sigma 1.1999%, strikes at forward: [75.1  82.2  84.47 86.69 93.15]  minus paper fit [1.75 2.4  2.46 2.46 2.43]  (s.e. 0.57)
+  sigma 1.1200%, strikes at mean   : [68.75 75.29 77.41 79.46 85.43]  minus paper fit [-4.6  -4.51 -4.6  -4.77 -5.29]  (s.e. 0.55)
+  sigma 1.1200%, strikes at forward: [70.36 76.81 78.89 80.9  86.81]  minus paper fit [-2.99 -2.99 -3.12 -3.33 -3.91]  (s.e. 0.52)
+
+2. fits
+  mean    equal            : sigma 1.2181% b 0.3459 | vols [74.7 81.7 83.9 86.1 92.5] | gamma(30y) 144.2 +- 0.2 (paper 140.3)
+  mean    ATM pinned (x30) : sigma 1.1897% b 0.3541 | vols [72.9 79.8 82.  84.2 90.5] | gamma(30y) 135.5 +- 0.2 (paper 140.3)
+  forward equal            : sigma 1.1918% b 0.3650 | vols [74.7 81.7 83.9 86.1 92.5] | gamma(30y) 137.4 +- 0.2 (paper 140.3)
+  forward ATM pinned (x30) : sigma 1.1652% b 0.3722 | vols [72.9 79.8 82.  84.2 90.5] | gamma(30y) 129.5 +- 0.2 (paper 140.3)
+  gamma(30y) at the paper's stated parameters: 140.5 +- 0.2

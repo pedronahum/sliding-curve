@@ -131,10 +131,14 @@ Three things to know:
   that mean or from the curve forward is not determined: Figure 11 favours
   the mean, Figure 8 the forward. `strike_reference=` offers both; the
   default is the mean.
-- **The fit differs slightly from the paper's** (`b` 0.35 against 0.367).
-  The quotes are read off a plot to about 0.3bp and the paper does not state
-  its fitting weights; here the at-the-money quote is pinned and the rest are
-  equally weighted.
+- **The fit differs slightly from the paper's** (`b` 0.353 against 0.367).
+  The paper's own parameters reproduce its plotted fit in this code to
+  0.7bp, so the engine agrees; the fit is what moves. Five quotes fix a
+  valley in (`sigma`, `b`) along which `gamma(30y)` moves about 10bp per
+  basis point of smile level, and over pricing seeds a single fit scatters
+  by 0.0055% in `sigma`, 0.0027 in `b` and 1.7bp in `gamma(30y)` at 65,536
+  paths (A6). The paper does not state its weights or path count; here the
+  at-the-money quote is pinned, since the paper says it is matched exactly.
 - **At the end of the plotted range** (30 years on the market curve, 40 on
   the synthetic ones) `Y_eh` and `theta` depend on forwards up to five years
   further out, which no figure shows. Reasonable extensions move `Y_eh(30y)`

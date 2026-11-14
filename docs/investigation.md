@@ -24,6 +24,7 @@ paper are accurate to about 0.3bp (checked below).
 | A3 | Figure 9 at eta = 1.5 | **unresolved**, bounded; question to authors |
 | A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); **paper inconsistency** (level) |
 | A5 | Section 8.2 uplift | **explained** |
+| A6 | Skew fit | **explained** to within Monte-Carlo noise; question to authors |
 | A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
 
@@ -321,3 +322,47 @@ them. That is the only explanation left standing and it cannot be checked
 without the paper's path count and seeds. Section B4 shows that a control
 variate does not help here (the twin does not see z); a conditional
 (Rao-Blackwell) estimator would.
+
+---
+
+## A6. The skew fit on the market smile
+
+**Status: explained to within Monte-Carlo noise; the fitting weights and
+path count are questions for the authors.**
+
+*The paper's parameters are consistent with this code.* At `sigma =
+1.1999%`, `b = 0.367` this code reproduces the paper's plotted fitted vols
+to -0.4..+0.7bp (s.e. 0.6) and Figure 12's gamma(30y) to 140.5 +- 0.2
+against 140.3 (A9, A10). The engine is not the issue; the fit is.
+
+*Weights.* The paper says the fit matches the at-the-money quote exactly.
+Equal weights miss it by 1.9bp, so the at-the-money quote is pinned (weight
+30). Fits (`experiments/a6_skew_fit.py`, 65,536 paths):
+
+| strikes from | weights | sigma | b | fitted vols | gamma(30y) |
+|---|---|---|---|---|---|
+| mean | equal | 1.2181% | 0.346 | 74.7 81.7 83.9 86.1 92.5 | 144.2 |
+| mean | ATM pinned | 1.1897% | 0.354 | 72.9 79.8 82.0 84.2 90.5 | 135.5 |
+| forward | equal | 1.1918% | 0.365 | 74.7 81.7 83.9 86.1 92.5 | 137.4 |
+| forward | ATM pinned | 1.1652% | 0.372 | 72.9 79.8 82.0 84.2 90.5 | 129.5 |
+| paper | | 1.1999% | 0.367 | 73.4 79.8 82.0 84.2 90.7 | 140.3 |
+
+With the at-the-money quote pinned, the fitted smile matches the paper's
+fitted smile to 0.45bp under either strike reading, yet sigma, b and gamma
+differ: the five quotes fix a valley in (sigma, b) along which gamma(30y)
+moves by about 10bp per basis point of smile level.
+
+*Noise.* The same fit over six pricing seeds (`experiments/a6_fit_noise.py`):
+
+| paths | sigma | b | gamma(30y) |
+|---|---|---|---|
+| 32,768 | 1.1888 +- 0.0095% | 0.3530 +- 0.0060 | 135.1 +- 2.7 |
+| 65,536 | 1.1890 +- 0.0055% | 0.3526 +- 0.0027 | 135.1 +- 1.7 |
+| paper | 1.1999% | 0.367 | 140.3 |
+
+(+- is the spread of a single fit.) The paper's point is 1-2 single-fit
+standard deviations away at 32k paths in sigma and gamma, and 2-5 in b.
+The difference corresponds to a 0.5bp shift of the fitted smile level, the
+size of one pricing s.e. of either code. With the control variate of B4 the
+fit noise falls (see B4), which leaves the paper's own path count and
+weights as the open question.
