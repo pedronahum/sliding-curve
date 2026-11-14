@@ -86,3 +86,28 @@ less than one quote's Monte-Carlo s.e. (about 1.3bp). Your point and ours
 (1.80%, 0.36, 1.39) both lie on that valley, along which gamma(30y) runs
 from 137 to 464bp (316bp at your point). If your objective had a clear
 minimum at 0.779, something in the set-up differs from ours.
+
+---
+
+## Q6 (A1)
+
+**What produced Figure 4, and is it the same pricer as Figures 8 and 11?**
+
+Three independent checks say Figure 4 is not the model of Sections 6 and
+9.1 priced as in Figures 8 and 11:
+
+1. The text says at-the-money vol at `b = 1` is about 4bp below `b = 0` at
+   the 5y expiry and 6-8bp below at 20y (we get -4.5 and -9.0, or -3.3 and
+   -5.1 with forward-referenced strikes); Figure 4 shows 0.0 and +5.9.
+2. Figure 4's 20y `b = 0` smile is the option of Figure 8 at `eta = 0`;
+   Figure 8 has it flat at 71.4bp, Figure 4 at 68.4bp drooping to 55.1bp at
+   +120bp, with no points at +160 and +200bp.
+3. At `b = 0` the option is Gaussian in every measure. No measure,
+   numeraire, inversion forward or call/put convention gives a Gaussian
+   smile that is flat and then falls off a cliff, or loses points half a
+   standard deviation from the money.
+
+At 5y our smiles match Figure 4 to 1.1bp; at 20y the `b = 1` slope is
+25bp against your 110bp under every scaling and local-vol variant we tried.
+If Figure 4 comes from an earlier version of the pricer, the question
+closes; if not, the code that produced it would show what differs.

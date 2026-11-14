@@ -95,8 +95,15 @@ same yield options that reproduce Section 9.4:
 - Figure 4's `b = 0` smile at 20y droops from 68bp to 55bp, while Figure 8
   shows the same option at `b = 0`, `eta = 0` flat at 71.4bp.
 
-So Figure 4 may come from a different version of the authors' pricer; only
-they can say.
+- At `b = 0` the option is Gaussian in every measure, yet Figure 4's 15-20y
+  `b = 0` smiles are flat and then fall off a cliff, losing points half a
+  standard deviation from the money. No measure, numeraire, inversion
+  forward or call/put convention produces that (A1).
+
+Every reading of the option and every scaling and local-volatility variant
+was tried (`docs/investigation.md`, A1); none moves the 20y `b = 1` slope off
+25bp against the paper's 110bp. Figure 4 is recorded as an inconsistency in
+the paper and put to the authors (`docs/questions_for_authors.md`).
 
 ### The market curve (Section 9.4, Figures 10-12)
 
@@ -212,7 +219,8 @@ reproduces the Jensen ratio to 0.1 points.
 
 ## Not done yet
 
-1. **Figure 4** is not reproduced (see above); it needs the authors' input.
+1. **Figure 4** is not reproduced and is inconsistent with the paper's text
+   and its Figure 8 (A1); it needs the authors' input.
 2. **Convexity at high skew or high vol-of-vol** is 1-5% below the paper at
    the longest maturities. Candidates: the curve beyond the plotted range,
    the bootstrap expiry grid, the volatility cap, and how `sigma` is

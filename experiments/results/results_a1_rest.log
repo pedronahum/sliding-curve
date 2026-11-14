@@ -1,0 +1,5 @@
+scaling monthly_u                      err 5/10/15/20y  1.0  7.1 11.2 16.3 | 20y b=1 slope  25.4 (paper 110) | ATM b1-b0: 5y  -3.9, 20y  -9.1
+scaling annual_w                       err 5/10/15/20y  1.2  7.2 11.3 16.6 | 20y b=1 slope  25.1 (paper 110) | ATM b1-b0: 5y  -4.5, 20y  -9.9
+no floor (|vol|)                       err 5/10/15/20y  1.2  7.2 11.2 16.3 | 20y b=1 slope  25.4 (paper 110) | ATM b1-b0: 5y  -4.5, 20y  -9.0
+floor on rate                          err 5/10/15/20y  1.2  7.2 11.2 16.3 | 20y b=1 slope  25.4 (paper 110) | ATM b1-b0: 5y  -4.5, 20y  -9.0
+relative vol flat (literal eq. 49)     err 5/10/15/20y  3.8  7.9 11.7 16.7 | 20y b=1 slope  24.9 (paper 110) | ATM b1-b0: 5y  -5.4, 20y  -9.9

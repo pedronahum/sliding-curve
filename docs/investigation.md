@@ -21,6 +21,7 @@ paper are accurate to about 0.3bp (checked below).
 | ID | Issue | Status |
 |---|---|---|
 | A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
+| A1 | Figure 4 | **paper inconsistency** (contradicts the text, Figure 8 and the model's Gaussian limit); question to authors |
 | A3 | Figure 9 at eta = 1.5 | **unresolved**, bounded; question to authors |
 | A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); **paper inconsistency** (level) |
 | A5 | Section 8.2 uplift | **explained** |
@@ -414,3 +415,95 @@ The B1 lognormal variance scheme makes this fit differentiable in eta (and
 faster), but it cannot make eta identified. What would: more expiries or
 the curvature of the smile further out, or far more paths (the s.e. has to
 fall below the 0.5bp rms differences along the valley).
+
+---
+
+## A1. Figure 4 (yield-option smiles by skew)
+
+**Status: paper inconsistency.** No reading of the option, of the
+volatility scaling or of the local volatility reproduces Figure 4 at 10-20
+years; the figure contradicts the paper's own text and its own Figure 8;
+and its `b = 0` smiles are not those of any Gaussian model. Digitisation is
+ruled out (overlay above).
+
+*The figure against the text.* Change of the at-the-money vol from `b = 0`
+to `b = 1`:
+
+| expiry | paper's text | paper's Figure 4 | this code, strikes from the mean | from the forward |
+|---|---|---|---|---|
+| 5y | "around 4bp below" | 0.0 | -4.5 | -3.3 |
+| 10y | | +1.5 | | |
+| 15y | | +1.2 | | |
+| 20y | "6 to 8bp" below | **+5.9** | -9.0 | -5.1 |
+
+This code agrees with the text (to within the strike-reference ambiguity of
+A9); the figure has the opposite sign.
+
+*The figure against Figure 8.* The 20y `b = 0` smile of Figure 4 is the same
+option as the eta = 0 smile of Figure 8 (`sigma = 1%`, `b = 0`, `eta = 0`).
+Figure 8 has it flat at 71.4bp; Figure 4 has it at 68.4bp at the money,
+drooping to 55.1bp at +120bp, with no points at all at +160 and +200bp.
+
+*The b = 0 smiles are not Gaussian under any convention.* At `b = 0` the
+yield is Gaussian with the same variance in every measure, so any pricing
+convention gives `price = c * Bachelier(m, K, s)` inverted with some forward
+F. `experiments/a1_gaussian_fingerprint.py` fits `c` and `m - F` freely to
+the paper's `b = 0` points, for calls, puts and out-of-the-money options:
+
+| expiry | Gaussian vol | best fit: rms, convention, c, m - F |
+|---|---|---|
+| 5y | 86.31 | 2.1bp: any (the paper is flat at 86.0; fine) |
+| 10y | 80.53 | 0.4bp: puts, c = 0.98, -2.3bp |
+| 15y | 75.40 | 1.6bp: puts, c = 0.92, -15.7bp |
+| 20y | 70.86 | 3.2bp: puts, c = 0.80, -40.7bp |
+
+Even with two free parameters the 15-20y shapes (flat, then a cliff, then
+missing points) are not reached, and the parameters needed are not those of
+any measure or numeraire (a 20% price scaling). A Gaussian smile cannot
+lose points at +160bp at 20y, half a standard deviation from the money,
+unless prices fall below intrinsic, i.e. unless the inversion forward and
+the option's mean disagree (or the price is wrong).
+
+*Every reading of the option* (`experiments/a1_conventions.py`; b = 0 to 1,
+sigma = 1%, strikes on the paper's grid, forward + 40k bp). Mean absolute
+error against Figure 4, and points missing (model / paper):
+
+| measure / inversion forward | 5y | 10y | 15y | 20y |
+|---|---|---|---|---|
+| Q^(T+delta) / model mean (library) | 1.1 [0/3] | 7.1 [0/2] | 11.0 [0/6] | 15.6 [0/11] |
+| Q^(T+delta) / curve forward | 7.6 [4/3] | 9.6 [2/2] | 12.7 [2/6] | 18.3 [2/11] |
+| Q^T (= spot Q, discounted) / model mean | 1.9 | 6.5 | 9.7 | 12.4 |
+| Q^T / curve forward | 9.8 | 13.3 | 15.6 | 16.1 |
+| P / model mean | 7.1 | 14.3 | 19.4 | 21.6 |
+| P / curve forward | 12.9 [12/3] | 11.5 [6/2] | 7.9 [2/6] | 11.9 [0/11] |
+| P, discounted pathwise / curve forward | 18.1 | 26.9 | 33.4 | 42.7 |
+
+(The "missing" counts for the paper include points hidden where lines
+cross; at 20y the genuinely absent markers are `b = 0` at +160, +200, `b = 0.5`
+at -200, -160 and `b = 1` at -200 to -120.)
+
+*Every scaling and local-volatility variant* (`experiments/a1_scaling_variants.py`,
+library measure). The slope of the 20y `b = 1` smile between -80 and +200bp
+is 110bp in the paper:
+
+| variant | error 5 / 10 / 15 / 20y | 20y b = 1 slope | ATM change b = 1 vs 0, 5y / 20y |
+|---|---|---|---|
+| library (annual unweighted bootstrap), strikes from mean | 1.2 / 7.2 / 11.2 / 16.3 | 25.4 | -4.5 / -9.0 |
+| strikes from forward | 0.8 / 7.0 / 11.0 / 15.6 | 24.5 | -3.3 / -5.1 |
+| zeroth-order scaling (79) | 1.8 / 7.9 / 12.6 / 18.9 | 22.7 | -5.5 / -15.5 |
+| bootstrap, monthly grid | 1.0 / 7.1 / 11.2 / 16.3 | 25.4 | -3.9 / -9.1 |
+| bootstrap, weighted (80) | 1.2 / 7.2 / 11.3 / 16.6 | 25.1 | -4.5 / -9.9 |
+| floor on the rate, not the vol | 1.2 / 7.2 / 11.2 / 16.3 | 25.4 | -4.5 / -9.0 |
+| relative vol flat (literal (49)) | 3.8 / 7.9 / 11.7 / 16.7 | 24.9 | -5.4 / -9.9 |
+
+Nothing moves the slope off 25bp: the model's smile at `b = 1` is what a
+lognormal-like local volatility on a 20% relative vol gives, and the
+paper's is four times steeper. The 5y panel is matched (1.1bp) by the
+library reading.
+
+*What Figure 4 looks like.* The pattern (a positive skew steepening with
+expiry, missing points where the vol falls, a drooping `b = 0` line) is
+what one gets when option prices are inverted around a forward that does
+not match the distribution priced, a mismatch that grows with expiry. We
+could not find a mismatch that reproduces it quantitatively and do not
+claim one. Only the authors' Figure 4 code can settle it.
