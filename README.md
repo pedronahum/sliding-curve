@@ -181,10 +181,17 @@ Figure 9 is matched to within 1% up to `eta = 1` and is 5% low at
 `eta = 1.5`. The paper's convexity ratios equal the squared ratios of its
 at-the-money vols, as if `sigma` were rescaled linearly; here `sigma` is
 recalibrated on the simulated option, which is not exactly linear because the
-convexity state `y` is random under stochastic volatility. The paper's
-`eta = 0` level of 71.4bp is also 0.7% above the Gaussian closed form
-(70.9bp) that reproduces its own Section 9.4 `sigma`. Smile shapes agree to
-1-2bp, with this code's minimum sitting about 50bp to the right.
+convexity state `y` is random under stochastic volatility.
+
+Figure 8's smiles agree to 0.4-1.5bp, and on a common axis of absolute
+strikes their minima coincide (about 400bp; the smile above plots both
+against absolute strike). An earlier version of this comparison set this
+code's offsets from the yield's mean (364bp) against the paper's offsets
+from the forward (387bp), which made the minimum appear 50bp to the right
+(A4). The paper's `eta = 0` level, 71.4bp (71.5 in its text), is 0.55bp
+above the exact Gaussian value of 70.86bp and its line is tilted, which a
+Gaussian smile cannot be under any pricing convention: it looks like the
+sampling error of a run with a few thousand paths.
 
 Section 8.2 quotes an uplift of about 15%, 16% and 17.5% for `eta = 0.6`
 over ten years at `kappa = 0`, `0.03` and `0.05`. Those are exactly the

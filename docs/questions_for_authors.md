@@ -30,6 +30,25 @@ and is the payment date `T + 5`?
 
 ---
 
+## Q2 (A3, A4, A6, A7)
+
+**How many paths (and were they antithetic or quasi-random) did the runs
+behind Figures 8, 9 and 11 use?**
+
+At `b = 0`, `eta = 0`, `sigma = 1%` the 20y x 5y option is Gaussian with a
+vol of exactly 70.86bp; Figure 8 plots 71.4 and the text says 71.5, and the
+eta = 0 line tilts from 71.2 to 71.6. A plain Monte-Carlo run with 4,096
+(16,384) paths misses 70.86 by 0.55bp or more 41% (20%) of the time. Your
+Figure 8 values at eta = 0.5, 1, 1.5 differ from our precise ones by
+-0.7, +1.2 and +0.3bp, non-monotonically. If the runs used a few thousand
+paths this also covers Figure 9 at eta = 1.5 (we get 204.2 +- 1.3 against
+your 212.8; our single-run spread is 2.6bp at 65,536 paths and would be
+5-10bp at 4k-16k), the gap between your skew fit (1.1999%, 0.367) and ours
+(1.1890%, 0.353, single-fit spread 0.0055% and 0.0027), and where your
+three-parameter fit stopped (A7).
+
+---
+
 ## Q3 (A6, A10)
 
 **What weights did the skew fit of Figure 11 use, and is "sigma = 1.12%" in

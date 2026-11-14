@@ -135,3 +135,22 @@ def test_short_rate_distribution_figure_13():
     assert 0.24 < np.mean(stats["atm"][1] < 0) < 0.30
     assert abs(np.median(stats["skew"][1])) < 40
     assert 0.44 < np.mean(stats["skew"][1] < 0) < 0.52
+
+
+def test_figure_8_smile_minimum_on_absolute_strikes():
+    """A4: on the paper's absolute strike axis the eta = 1.5 smile bottoms out
+    where Figure 8's does (about 400bp; the parabola through its three lowest
+    points). Comparing offsets from different references (this code's mean,
+    364bp; the paper's forward, 387bp) had put it 50bp to the right."""
+    from slidingcurve import bachelier as bl, pricing as pr
+    curve = markets.paper_curve("baseline")
+    off = 1e-4 * np.arange(-60.0, 141.0, 10.0)
+    mean, p, _ = pr.yield_option_prices(BASE._replace(eta=1.5), curve, 20.0, off,
+                                        lambda t: volscale.ybar_zeroth(curve, 5.0, t),
+                                        jax.random.PRNGKey(0), n_paths=2**16)
+    v = bl.implied_normal_vol(np.asarray(p), 0.0, off, 20.0)
+    lowest = 1e4 * (float(mean) + off[int(np.argmin(v))])
+    ref = np.array(markets.paper_figures()["fig8"]["eta=1.5"])
+    i = int(np.argmin(ref))
+    paper = 387.0 + 50.0 * (i - 5) + 50.0 * (ref[i - 1] - ref[i + 1]) / (2 * (ref[i - 1] + ref[i + 1] - 2 * ref[i]))
+    assert abs(lowest - paper) < 20.0

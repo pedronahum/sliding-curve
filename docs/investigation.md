@@ -21,6 +21,7 @@ paper are accurate to about 0.3bp (checked below).
 | ID | Issue | Status |
 |---|---|---|
 | A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
+| A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); **paper inconsistency** (level) |
 | A5 | Section 8.2 uplift | **explained** |
 | A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
@@ -142,6 +143,50 @@ At `b = 0.367` (`experiments/a6_skew_fit.py`, `a10_text_sigma.py`):
 either (the annual par swap would need 1.10% at `b = 0`). The test
 `test_papers_skew_parameters_reproduce_its_figure_11_fit_with_mean_referenced_strikes`
 checks both values.
+
+---
+
+## A4. Figure 8: position of the minimum and the eta = 0 level
+
+**Status: minimum fixed (it was a strike-axis artefact in the comparison,
+not in the model); the eta = 0 level is a paper inconsistency, most
+plausibly Monte-Carlo noise in the paper's own run.**
+
+The fix: `examples/stochvol_sweep.py` now plots both smiles against
+absolute strike (this code's at mean + offset, the paper's at its
+at-the-money line, 387bp, + offset), and
+`test_figure_8_smile_minimum_on_absolute_strikes` checks that the eta = 1.5
+smile bottoms out within 20bp of the paper's minimum (it is within 5bp; on
+the old axis it would have read 27bp off).
+
+*Minimum.* The old comparison plotted this code's strikes as offsets from
+its own mean (364bp at 20y) against the paper's offsets from the curve
+forward (387bp). On the paper's absolute strike axis the lowest point of
+this code's smile is where the paper's is (A9 table above); the parabola
+through the three lowest points puts the paper's minimum at 400-405bp and
+this code's at 404-407bp. In the expiry-forward measure the minimum would
+be at 365-370bp, so the comparison also confirms the measure.
+
+*Level.* At `b = 0`, `eta = 0`, `sigma = 1%` the option is Gaussian and its
+vol is exactly 70.86bp. Figure 8 plots 71.4 (text: 71.5) and its eta = 0
+line is not flat: it tilts from 71.2 to 71.6bp across strikes. No pricing
+convention makes a Gaussian smile tilt (A1 below), but a Monte-Carlo
+estimate does, since all strikes share the same paths.
+`experiments/a4_fig8_measures.py` measures the spread of the Gaussian
+at-the-money vol estimate for plain (non-antithetic) paths:
+
+| paths | spread of the ATM vol estimate | P(abs error >= 0.55bp) |
+|---|---|---|
+| 4,096 | 0.79bp | 0.41 |
+| 16,384 | 0.40bp | 0.20 |
+| 65,536 (this code, antithetic) | 0.33bp quoted s.e. | |
+
+So the paper's level is what a run with 4k-16k paths produces a fifth to
+two fifths of the time. Recalibrating Figure 9 to the paper's 71.5bp
+instead of the exact level was tried (A3): it breaks the match at eta = 0.5
+(136.1 against 133.6bp), so the paper's Figure 9 is not consistent with
+71.5bp as an exact target either. Only the path count and seed of the
+paper's run can settle this.
 
 ---
 
