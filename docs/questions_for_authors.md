@@ -124,6 +124,14 @@ At 5y our smiles match Figure 4 to 1.1bp; at 20y the `b = 1` slope is
 If Figure 4 comes from an earlier version of the pricer, the question
 closes; if not, the code that produced it would show what differs.
 
+We also tested 96 simple coding errors against the figure, each fixed
+before the run and none with a free parameter: the pricing measure, the
+discount, the inversion forward, the call/put choice, the strike centre, a
+numeraire left in the price, or the form of the local volatility. None
+reproduces it, and none even gets both the drooping `b = 0` line and the
+steep `b = 1` skew. The two features need forward mismatches of opposite
+sign. So if Figure 4 is a bug, it is not a single simple one.
+
 ---
 
 ## Q7 (A2)

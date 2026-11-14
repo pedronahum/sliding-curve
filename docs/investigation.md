@@ -21,7 +21,7 @@ paper are accurate to about 0.3bp (checked below).
 | ID | Issue | Status |
 |---|---|---|
 | A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
-| A1 | Figure 4 | **paper inconsistency** (contradicts the text, Figure 8 and the model's Gaussian limit); question to authors |
+| A1 | Figure 4 | **paper inconsistency** (contradicts the text, Figure 8 and the model's Gaussian limit; no single one of 96 pre-registered coding errors reproduces it); question to authors |
 | A2 | Convexity at high skew | **partly fixed** (bootstrap grid); rest bounded by the cap definition, or the paper's sampling noise if its skew curves shared a seed; question to authors |
 | A3 | Figure 9 at eta = 1.5 | **unresolved**, bounded; consistent with the paper's own sampling noise at the path count its other figures imply; question to authors |
 | A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); **paper inconsistency** (level) |
@@ -618,6 +618,68 @@ what one gets when option prices are inverted around a forward that does
 not match the distribution priced, a mismatch that grows with expiry. We
 could not find a mismatch that reproduces it quantitatively and do not
 claim one. Only the authors' Figure 4 code can settle it.
+
+*Search for a coding error (pre-registered).* `experiments/a1_bug_search.py`
+fixed, before it was run (commit 8810f5c), 96 zero-parameter error
+hypotheses, four signatures of the 20y panel and the decision rules. The
+hypotheses are:
+
+- 90 pricing recipes: distribution in `Q^(T+delta)`, `Q^T`, spot `Q` with
+  the discount forgotten, `P`, or `P` discounted pathwise; inversion
+  forward at the sample mean, the curve forward, or today's benchmark
+  `Y(0, 0, 5)`; calls, puts, out-of-the-money, or in-the-money (the
+  out-of-the-money test with its sign flipped); strikes from the curve
+  forward or from the mean.
+- 4 with a numeraire left in the price (`P(0, T+5)/P(0, T)` or `P(0, T)`).
+- 2 local-volatility errors (local variance linear in `Y`; local vol
+  squared).
+
+The signatures (paper's values in brackets):
+
+- S1: the `b = 0` smile droops: at +120 it is at least 8bp below its ATM
+  value, and at +160 and +200 it is absent or at least 20bp below
+  [-13.3; absent].
+- S2: ATM rises with skew, `b = 1` minus `b = 0` above +2bp [+5.9].
+- S3: the `b = 1` slope from -80 to +200 is at least 80bp [109].
+- S4: `b = 1` is absent at -200, -160 and -120.
+
+A hypothesis "reproduces" Figure 4 only if it passes all four signatures
+and is within 3bp of the paper in every panel. The 5, 10 and 15y panels
+were held out.
+
+Settings: 2^17 antithetic paths; Monte-Carlo s.e. of the 20y vols
+0.3-1.1bp.
+
+**Result: all 96 are refuted, and none passes more than two signatures.**
+Each signature is reached by some hypotheses:
+
+| signature | hypotheses that pass it |
+|---|---|
+| S1 | 5 |
+| S2 | 35 |
+| S3 | 5 |
+| S4 | 10 |
+
+But no hypothesis passes S1 together with S3 or S4. Puts inverted around a
+forward below the distribution's mean give the drooping `b = 0` line.
+Calls inverted around a forward above it give the steep skew and the
+missing low strikes. A single convention cannot do both. The closest rows,
+with errors in bp:
+
+| hypothesis | signatures | error 5 / 10 / 15 / 20y |
+|---|---|---|
+| `Q^T`, curve forward, out of the money, strikes from the curve | S2 | 4.3 / 5.9 / 8.5 / 9.6 |
+| `Q^T`, today's benchmark, out of the money | S2, S3 | 19.4 / 20.2 / 19.5 / 17.8 |
+| spot `Q` without discount, curve forward, puts | S1, S2 | 11.3 / 20.6 / 28.5 / 35.3 |
+| library (`Q^(T+delta)`, mean) | none | 1.4 / 7.1 / 10.9 / 15.5 |
+
+The library row reproduces the earlier conventions run (1.1 / 7.1 / 11.0 /
+15.6) on a different seed and path count.
+
+If Figure 4 comes from a coding error, it is not a single one of these.
+It would have to be a combination of errors, or an error in the
+simulation itself; the latter would not touch the 5y panel, which the
+library matches. This narrows Q6 but does not answer it.
 
 ---
 

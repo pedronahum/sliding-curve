@@ -1,0 +1,106 @@
+simulated 5y
+simulated 10y
+simulated 15y
+simulated 20y
+96 hypotheses, 131072 paths
+
+verdict      S1 S2 S3 S4  err 5/10/15/20y        ATMchg slope  hypothesis
+refuted      .  x  x  .  19.4/20.2/19.5/17.8     +22.2  81.7  P: T / inv spot / otm / K from curve
+refuted      x  x  .  .  25.0/25.2/28.5/31.6      +5.6   0.7  P: T / inv spot / put / K from curve
+refuted      x  x  .  .  11.3/20.6/28.5/35.3     +11.5 -11.3  P: Q-nodisc / inv curve / put / K from curve
+refuted      x  x  .  .  44.9/47.5/45.8/41.8      +5.6 -62.5  P: T / inv spot / itm / K from curve
+refuted      .  x  x  .   8.8/17.9/35.1/70.0    +206.0 276.2  P: Q-nodisc / inv curve / otm / K from curve
+refuted      x  x  .  .  21.6/42.5/62.5/86.5    +206.0 -281.2  P: Q-nodisc / inv curve / itm / K from curve
+refuted      .  x  x  .  24.0/36.6/56.4/95.5    +206.4 304.1  P: Q-nodisc / inv spot / otm / K from curve
+refuted      .  x  .  .   4.3/ 5.9/ 8.5/ 9.6     +22.0  55.7  P: T / inv curve / otm / K from curve
+refuted      .  x  .  .   4.3/ 6.5/ 9.0/11.3     +27.2  55.5  P: T / inv curve / otm / K from mean
+refuted      .  x  .  .   2.2/ 6.8/ 9.7/12.2     +19.4  30.8  P: T / inv mean / any / K from mean
+refuted      .  x  .  .   1.5/ 6.4/ 9.4/12.3     +13.0  32.1  P: T / inv mean / any / K from curve
+refuted      .  .  x  .  34.8/28.6/20.4/13.1      -5.8  80.0  P: P / inv curve / itm / K from mean
+refuted      .  x  .  .   5.0/10.1/13.1/15.9     +10.3  20.0  P: T / inv curve / put / K from mean
+refuted      .  x  .  .   9.2/12.7/15.0/16.1     +22.0  24.4  P: T / inv curve / call / K from curve
+refuted      .  x  .  .   5.3/10.0/13.1/16.3      +5.4  22.0  P: T / inv curve / put / K from curve
+refuted      .  x  .  .   9.5/13.1/15.3/16.3     +27.2  24.9  P: T / inv curve / call / K from mean
+refuted      .  x  .  .  10.2/16.7/19.4/20.9     +10.3 -10.5  P: T / inv curve / itm / K from mean
+refuted      .  x  .  .   6.6/13.8/18.8/21.5      +2.1  34.1  P: P / inv spot / itm / K from curve
+refuted      .  x  .  .   6.6/13.8/18.9/21.5      +2.1  33.8  P: P / inv spot / put / K from curve
+refuted      .  x  .  .  20.1/22.0/23.7/23.0     +26.9  20.1  P: T / inv spot / otm / K from mean
+refuted      .  .  .  x  10.9/22.4/23.5/23.1      +nan   nan  P: Q-nodisc / inv curve / put / K from mean
+refuted      .  x  .  .  10.4/17.2/20.3/24.1     +22.0  -9.4  P: T / inv curve / itm / K from curve
+refuted      .  x  .  .   2.7/ 8.5/15.1/25.6     +78.0  53.2  P: Q-nodisc / inv mean / any / K from curve
+refuted      .  x  .  .  33.2/35.8/32.5/27.2     +22.2  18.5  P: T / inv spot / call / K from curve
+refuted      .  x  .  .  32.7/35.5/32.6/27.6     +26.9  20.1  P: T / inv spot / call / K from mean
+refuted      x  .  .  .  14.8/25.9/28.9/29.9      -5.5   9.6  P: P / inv curve / otm / K from mean
+refuted      .  x  .  .  23.7/24.9/27.9/31.3      +9.0 -12.1  P: T / inv spot / put / K from mean
+refuted      .  x  .  .  25.8/28.7/31.1/31.8     +13.1   nan  P: Q-nodisc / inv spot / put / K from curve
+refuted      .  .  .  x  20.9/37.9/35.8/34.0      +nan   nan  P: Q-nodisc / inv curve / itm / K from mean
+refuted      .  x  .  .  42.9/45.3/40.7/36.5      +9.0 -12.1  P: T / inv spot / itm / K from mean
+refuted      .  x  .  .  33.1/40.7/42.1/36.9      +2.1  42.0  P: P / inv curve / put / K from curve
+refuted      .  .  .  x  25.7/25.6/31.5/38.9      +nan   nan  P: Q-nodisc / inv spot / put / K from mean
+refuted      .  .  .  x  18.7/27.5/33.9/42.7     -11.1   nan  P: P-disc / inv curve / call / K from curve
+refuted      .  .  .  x  12.0/19.4/32.2/43.0      +nan   nan  P: P-disc / inv spot / itm / K from mean
+refuted      .  .  .  x  51.2/57.1/42.9/45.9      +nan   nan  P: Q-nodisc / inv spot / itm / K from mean
+refuted      .  .  x  .  12.0/22.1/36.0/47.2     -45.2 119.9  P: P-disc / inv spot / itm / K from curve
+refuted      .  x  .  .   4.3/12.9/25.6/50.6    +158.3  40.4  P: Q-nodisc / inv mean / any / K from mean
+refuted      .  .  .  x   6.9/18.6/34.7/59.0      +nan   nan  P: P-disc / inv spot / call / K from mean
+refuted      .  .  .  x  45.6/52.3/60.2/60.1     -11.1   nan  P: P-disc / inv curve / itm / K from curve
+refuted      .  .  .  x  41.5/46.1/52.0/62.1      +nan   nan  P: P-disc / inv curve / itm / K from mean
+refuted      .  x  .  .  53.9/69.3/80.4/81.9     +13.1   nan  P: Q-nodisc / inv spot / itm / K from curve
+refuted      .  .  .  x  23.5/38.8/55.3/83.0      +nan   nan  P: P-disc / inv curve / call / K from mean
+refuted      .  x  .  .  18.5/37.8/63.2/107.2   +206.0   6.3  P: Q-nodisc / inv curve / call / K from curve
+refuted      .  x  .  .   8.9/23.7/55.9/107.6   +243.3  24.0  P: Q-nodisc / inv curve / otm / K from mean
+refuted      .  x  .  .  18.5/37.7/63.7/110.6   +243.3  24.0  P: Q-nodisc / inv curve / call / K from mean
+refuted      .  x  .  .  25.2/44.3/78.2/122.6   +243.3  22.7  P: Q-nodisc / inv spot / otm / K from mean
+refuted      .  x  .  .  41.8/61.1/83.5/122.9   +206.4   4.0  P: Q-nodisc / inv spot / call / K from curve
+refuted      .  x  .  .  40.4/58.5/81.0/123.4   +243.3  22.7  P: Q-nodisc / inv spot / call / K from mean
+refuted      .  .  .  .  10.1/ 6.7/ 8.4/10.3      -8.8  58.0  P: T+d / inv curve / itm / K from curve
+refuted      .  .  .  .  16.7/19.0/13.5/11.0      -5.8  45.9  P: P / inv curve / call / K from mean
+refuted      .  .  .  .  13.5/11.7/ 8.0/11.8      +1.8  40.6  P: P / inv curve / call / K from curve
+refuted      .  .  .  .  10.4/ 8.3/ 9.5/12.3     -13.7  61.4  P: T+d / inv curve / itm / K from mean
+refuted      .  .  .  .   5.5/ 8.2/11.6/13.4      -0.1  33.7  P: T+d / inv curve / put / K from curve
+refuted      .  .  .  .   4.7/ 7.6/11.4/13.6      -4.7  34.3  P: T+d / inv curve / put / K from mean
+refuted      .  .  .  .  11.1/ 9.4/11.0/14.0     -12.9  32.7  P: T+d / inv spot / otm / K from mean
+refuted      .  .  .  .  11.1/ 9.3/10.9/14.0      -9.0  32.1  P: T+d / inv spot / otm / K from curve
+refuted      .  .  .  .   1.4/ 7.1/10.9/15.5      -4.9  24.8  P: T+d / inv mean / any / K from curve
+refuted      .  .  .  .   2.1/ 7.3/11.2/16.2      -8.7  25.7  P: T+d / inv mean / any / K from mean
+refuted      .  .  .  .  17.7/17.5/17.1/17.3      -9.0  22.5  P: T+d / inv spot / call / K from curve
+refuted      .  .  .  .   3.6/ 9.7/12.9/17.3      -4.1  15.3  D: D1 / inv mean / any / K from mean
+refuted      .  .  .  .   7.5/ 8.8/12.3/17.5     -21.0  40.1  D: D2 / inv mean / any / K from mean
+refuted      .  .  .  .  17.9/17.8/17.5/18.0     -12.9  22.8  P: T+d / inv spot / call / K from mean
+refuted      .  .  .  .   8.2/10.4/13.3/18.2      -8.8  31.8  P: T+d / inv curve / call / K from curve
+refuted      .  .  .  .   9.0/12.5/15.6/19.6      -3.4  26.1  N: T+d / inv mean / otm / K from curve / N1
+refuted      .  .  .  .   9.4/12.5/14.6/19.7     -13.7  36.2  P: T+d / inv curve / call / K from mean
+refuted      .  .  .  .   4.0/11.2/16.7/20.0      -5.7  35.7  P: P / inv spot / itm / K from mean
+refuted      .  .  .  .   4.0/11.2/16.7/20.0      -5.7  35.4  P: P / inv spot / call / K from mean
+refuted      .  .  .  .   4.0/11.2/16.7/20.0      -5.6  35.4  P: P / inv mean / any / K from mean
+refuted      .  .  .  .   3.9/11.2/16.8/20.0      -5.4  35.4  P: P / inv spot / put / K from mean
+refuted      .  .  .  .   4.0/11.2/16.8/20.0      -5.4  35.1  P: P / inv spot / otm / K from mean
+refuted      .  .  .  .   5.3/11.5/16.6/20.2     -24.4  25.3  P: P-disc / inv mean / any / K from curve
+refuted      .  .  .  .  21.2/23.7/24.1/20.5      -0.1  19.7  P: T+d / inv spot / put / K from curve
+refuted      .  .  .  .  36.3/28.9/22.7/20.9      +1.8  75.7  P: P / inv curve / itm / K from curve
+refuted      .  .  .  .  21.1/24.2/23.7/20.9      -4.1  21.0  P: T+d / inv spot / put / K from mean
+refuted      .  .  .  .   3.7/11.6/16.4/21.0      -4.7   9.1  P: T+d / inv curve / otm / K from mean
+refuted      .  .  .  .   6.7/13.7/18.7/21.5      +1.8  33.7  P: P / inv spot / call / K from curve
+refuted      .  .  .  .   6.7/13.8/18.8/21.5      +1.8  33.5  P: P / inv spot / otm / K from curve
+refuted      .  .  .  .   6.7/13.8/18.8/21.5      +1.9  33.7  P: P / inv mean / any / K from curve
+refuted      .  .  .  .   3.9/12.1/16.8/21.9      -8.8   7.5  P: T+d / inv curve / otm / K from curve
+refuted      .  .  .  .   3.2/10.3/17.0/22.7     -43.3  30.8  P: P-disc / inv mean / any / K from mean
+refuted      .  .  .  .  29.4/32.9/30.5/23.8      -0.1  10.1  P: T+d / inv spot / itm / K from curve
+refuted      .  .  .  .   9.4/14.9/19.0/23.9      -7.3   9.4  N: T+d / inv curve / otm / K from curve / N1
+refuted      .  .  .  .  14.6/23.1/24.2/24.2      +1.8   6.9  P: P / inv curve / otm / K from curve
+refuted      .  .  .  .  29.4/33.4/30.3/25.0      -4.1  11.2  P: T+d / inv spot / itm / K from mean
+refuted      .  .  .  .   3.2/ 7.4/15.8/27.7     -11.5  37.4  P: P-disc / inv spot / call / K from curve
+refuted      .  .  .  .  27.0/33.2/35.1/32.0      -5.5  43.7  P: P / inv curve / put / K from mean
+refuted      .  .  .  .   8.2/17.6/25.7/34.6      -0.6  27.8  N: T+d / inv mean / otm / K from curve / N2
+refuted      .  .  .  .   9.2/20.0/30.0/36.1     -59.0  55.6  P: P-disc / inv spot / put / K from mean
+refuted      .  .  .  .   8.7/19.2/27.7/37.1      -4.2  12.4  N: T+d / inv curve / otm / K from curve / N2
+refuted      .  .  .  .   5.5/16.9/28.5/41.3     -11.5 -32.9  P: P-disc / inv spot / otm / K from curve
+refuted      .  .  .  .   4.4/19.3/31.7/43.7     -59.0 -16.3  P: P-disc / inv spot / otm / K from mean
+refuted      .  .  .  .  30.9/41.1/47.4/46.6     -59.6  63.4  P: P-disc / inv curve / put / K from mean
+refuted      .  .  .  .  19.8/37.3/48.7/51.4     -59.6 -39.4  P: P-disc / inv curve / otm / K from mean
+refuted      .  .  .  .  19.2/36.8/48.5/59.3     -11.1 -57.3  P: P-disc / inv curve / otm / K from curve
+refuted      .  .  .  .  14.1/31.6/48.7/60.8     -45.2  49.6  P: P-disc / inv spot / put / K from curve
+refuted      .  .  .  .  39.7/57.7/72.0/78.3     -45.0  56.0  P: P-disc / inv curve / put / K from curve
+
+{'reproduces': 0, 'shape only': 0, 'refuted': 96}; signature pass counts {'S1': 5, 'S2': 35, 'S3': 5, 'S4': 10}
+MC s.e. of the 20y smiles for the top row (bp, max over strikes): b=0.0: 0.34, b=0.25: 0.48, b=0.5: 0.65, b=0.75: 0.87, b=1.0: 1.11
