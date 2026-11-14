@@ -32,6 +32,7 @@ paper are accurate to about 0.3bp (checked below).
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
 | C1 | Multi-factor model | **built**, with tests |
 | C2 | Ho-Lee closed forms | **built**, with tests |
+| C3 | Forward-rate decomposition, Appendix F | **built**, with tests |
 | C5 | Equilibrium-rate and front-end refinements | **built** (one factor), with tests |
 
 ---
@@ -963,3 +964,25 @@ O(delta)); the library simulator with kappa = 0 and a 0.001-year benchmark
 reproduces E.2 (Y_eh = r(0) within 3 s.e. + 0.03bp, gamma to 0.1%); and a
 direct simulation of r reproduces E.1 and the cash growth rate of E.3.
 No inconsistency in Appendix E was found.
+
+---
+
+## C3. Forward-rate decomposition and Eurodollar futures (Section 4.3, Appendix F)
+
+**Status: built**, with tests. `slidingcurve/forward.py`.
+
+`decompose_forward` evaluates (20), f(0, T) = E^P[r(T)] + pi(T) - gamma_f(T),
+from the same simulated profiles as the yield decomposition, the three terms
+estimated independently. Appendix F: the futures convexity (105), Morton's
+(2022) futures/forward construction (99), regression (100) and term
+premium (101), the curve shape (106) with constant sliding-curve market price
+of risk (Proposition 17) and the MPR implied by a forward curve (107).
+
+**Tests** (`tests/test_forward_decomposition.py`): (105) equals the risk-
+neutral drift E^Q[x(t)] of (41) by quadrature, eq. (24); Gaussian Monte
+Carlo against the closed forms; (20) closes with skew and stochastic
+volatility, and Proposition 5 holds (gamma is the average of gamma_f, theta
+the average of pi); Proposition 17 (curve (106) has constant MPR xi, and
+the integral of (106) in closed form); and Remark 18: with kappa = 0 the
+curve (106) is exactly (102), so Morton's regression recovers (r_inf, xi).
+No inconsistency in Appendix F was found.
