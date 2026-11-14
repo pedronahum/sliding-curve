@@ -33,6 +33,7 @@ paper are accurate to about 0.3bp (checked below).
 | C1 | Multi-factor model | **built**, with tests |
 | C2 | Ho-Lee closed forms | **built**, with tests |
 | C3 | Forward-rate decomposition, Appendix F | **built**, with tests |
+| C4 | Curve bootstrap from swap quotes | **built**, with tests |
 | C5 | Equilibrium-rate and front-end refinements | **built** (one factor), with tests |
 
 ---
@@ -986,3 +987,26 @@ the average of pi); Proposition 17 (curve (106) has constant MPR xi, and
 the integral of (106) in closed form); and Remark 18: with kappa = 0 the
 curve (106) is exactly (102), so Morton's regression recovers (r_inf, xi).
 No inconsistency in Appendix F was found.
+
+---
+
+## C4. Market-curve bootstrap from swap quotes
+
+**Status: built**, with tests. `slidingcurve/bootstrap.py`.
+
+`bootstrap(swap_tenors, swap_rates, freq, deposit_tenors, deposit_rates)`
+returns the `Curve` (natural cubic spline in zero yield, one node per
+instrument) that reprices every input. The spline is global, so all node
+values are solved jointly by Newton rather than one at a time. Conventions
+are deliberately plain (year fractions are differences of times, one fixed-
+leg frequency, single curve); real quotes need day counts applied first.
+
+**Tests** (`tests/test_bootstrap.py`): with quotes generated from a known
+Nelson-Siegel curve (2 deposits, 14 swaps to 50 years, annual and semi-
+annual), the bootstrap reprices every input to 1e-12, recovers the zero
+curve to 0.2bp and forwards beyond one year to 2bp; duplicate maturities
+are rejected.
+
+The paper's market curve (Section 9.4) is still the digitised Figure 10
+curve: the paper gives no swap quotes, so there is nothing to bootstrap
+from; this builds the tool for a user who has them.
