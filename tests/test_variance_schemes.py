@@ -53,7 +53,7 @@ def test_eta_calibration_uses_autodiff_and_recovers_a_known_eta():
     off = np.array([-0.02, -0.005, 0.0, 0.005, 0.02])
     true = Model(0.03, 5.0, 0.012, b=0.3, eta=0.7, variance_scheme="lognormal")
     key = jax.random.PRNGKey(3)
-    fn = volscale.bootstrap_fn(curve, true, np.arange(1.0, 21.0))
+    fn = volscale.bootstrap_fn(curve, true, volscale.bootstrap_grid(20.0))     # the calibrator's grid
     _, p, _ = pr.yield_option_prices(true, curve, 20.0, off, fn, key, 2**13)
     vols = bl.implied_normal_vol(np.asarray(p), 0.0, off, 20.0)
     fit = calibration.calibrate_yield_smile(true._replace(sigma=0.011, b=0.4, eta=0.5), curve, 20.0, off, vols,
