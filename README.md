@@ -318,6 +318,10 @@ print(dec.theta, dec.gamma, dec.residual)
 
 ## Licence
 
-None chosen yet. No code was copied from kooderive (GPL v3), so the choice is
-open; importing its Sobol and Brownian-bridge modules later would make this
-repository GPL v3 too.
+None chosen yet; the choice is the copyright holder's. No code was copied
+from kooderive (GPL v3), so it is open. The options and what each implies
+here (permissive MIT/BSD/Apache 2.0, file-level MPL 2.0, LGPL/GPL/AGPL v3,
+and the status quo of no licence), together with the separate question of
+the digitised figure data, are set out in `docs/investigation.md` (B5).
+Importing kooderive's Sobol and Brownian-bridge modules later would require
+GPL v3.

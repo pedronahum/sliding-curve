@@ -670,6 +670,37 @@ standard error at the market skew.
 
 ---
 
+## B5. Licence
+
+**Status: options listed; no licence chosen** (as instructed). Facts that
+bear on the choice: no code from kooderive (GPL v3) is included (the Joshi
+test market in `markets.py` re-states a model set-up, parameters and a
+formula, not code); the runtime dependencies are JAX and jaxlib (Apache
+2.0), NumPy and SciPy (BSD 3-clause), and, for examples and tools only,
+Matplotlib (PSF-style, BSD-compatible) and Pillow (MIT-CMU); `paper.pdf` and
+the extracted figure images are not in the repository, but
+`slidingcurve/data/paper_figures_digitised.json` holds numbers read off the
+paper's figures.
+
+| option | what it implies here |
+|---|---|
+| MIT or BSD 3-clause | Anyone may use, modify and redistribute, including in closed-source products, keeping the notice. Simplest; compatible with every dependency. No patent grant. |
+| Apache 2.0 | As MIT, plus an explicit patent licence from contributors and a patent-retaliation clause; requires stating changes. Same licence as JAX. Compatible with GPL v3 (one-way), not GPL v2. |
+| MPL 2.0 | File-level copyleft: modified files must stay open, the rest of a larger work may be closed. A middle ground for a library. |
+| LGPL v3 | Library copyleft: changes to the library must be shared, applications that use it need not be. |
+| GPL v3 | Strong copyleft: anything distributed that includes it must be GPL v3. The only option that would allow importing kooderive's code (e.g. its Sobol and Brownian-bridge modules) later; it would also bind anyone who builds on this. |
+| AGPL v3 | GPL v3 plus the network clause: also triggered by offering it as a service. |
+| no licence (status quo) | All rights reserved by default: others may read it but not legally use, modify or redistribute it. |
+
+Two things are independent of the code licence. The digitised figure data
+are measurements of the authors' published figures; the paper's own terms
+(SSRN) apply to the figures, and a data licence such as CC BY 4.0 for the
+JSON (with attribution to the paper) would make the status explicit. And
+the decision is the copyright holder's; contributions so far are one
+author's plus AI-assisted code.
+
+---
+
 ## A2. Convexity at high skew (Figures 3 and 6)
 
 **Status: partly fixed (the bootstrap grid was not converged); the remaining
