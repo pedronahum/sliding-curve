@@ -22,6 +22,7 @@ paper are accurate to about 0.3bp (checked below).
 |---|---|---|
 | A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
 | A5 | Section 8.2 uplift | **explained** |
+| A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
 
 ---
@@ -182,3 +183,32 @@ points; the rest (0.2 points at kappa = 0) is within 1.6 single-run
 standard deviations. Nothing is wrong on either side: Section 8.2 states the
 idealised effect, the model includes the drift. The README previously set
 one against the other.
+
+---
+
+## A8. The curve beyond the plotted range
+
+**Status: unresolved by construction, bounded.** Y_eh and theta at the last
+plotted maturity depend on forwards up to five years beyond it, which no
+figure shows. `experiments/a8_extrapolation.py` tries four extensions of the
+digitised zero curve (all reproduce the digitised yields inside the plotted
+range to 0.4-0.6bp):
+
+| market curve, T = 30y | quadratic (library) | linear | flat zero | flat forward | paper |
+|---|---|---|---|---|---|
+| Y_eh | 377.9 | 373.6 | 370.4 | 373.8 | 376.4 |
+| theta | 173.1 | 177.4 | 180.6 | 177.2 | 174.7 |
+| gamma | 107.8 | 107.8 | 107.8 | 107.8 | 108.0 |
+
+| baseline curve, T = 40y | quadratic | linear | flat zero | flat forward | paper |
+|---|---|---|---|---|---|
+| Y_eh | 304.9 | 303.2 | 300.0 | 303.2 | 304.8 |
+
+Convexity does not depend on the extension at `b = 0`. Y_eh and theta move
+together by up to 7bp in opposite directions (their sum is fixed by the
+curve). The paper's 30y values lie inside the band, between the quadratic
+and the linear extension, and its 40y Y_eh on the baseline curve matches
+the quadratic one to 0.1bp. The 1.5bp residual at 30y is therefore within
+what the unpublished part of the curve leaves open; only the authors' curve
+beyond 30 (and 40) years can close it. Inside the plotted range, at 20y and
+25y, all four extensions agree with each other and with the paper to 0.3bp.

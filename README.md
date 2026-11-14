@@ -134,8 +134,13 @@ Three things to know:
 - **The fit differs slightly from the paper's** (`b` 0.35 against 0.367).
   The quotes are read off a plot to about 0.3bp and the paper does not state
   its fitting weights; here the at-the-money quote is pinned and the rest are
-  equally weighted. At 30 years, where the curve beyond the plotted range is
-  extrapolated, `Y_eh` and `theta` are within 2bp.
+  equally weighted.
+- **At the end of the plotted range** (30 years on the market curve, 40 on
+  the synthetic ones) `Y_eh` and `theta` depend on forwards up to five years
+  further out, which no figure shows. Reasonable extensions move `Y_eh(30y)`
+  between 370 and 378bp and `theta` by the same amount the other way; the
+  paper's values lie inside that band, 1.5bp from this code's quadratic
+  extension. Convexity is unaffected (A8).
 
 The three-parameter fit including `eta` converges, to `sigma = 1.80%`,
 `b = 0.36`, `eta = 1.39` with errors under 1.5bp, not to the paper's

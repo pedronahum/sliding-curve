@@ -40,3 +40,16 @@ miss it by 1.9bp, so we pin it. At `b = 0.367`, 1.1999% (the caption of
 Figure 13) reproduces your fitted vols to 0.7bp and Figure 12's gamma(30y)
 to 140.5 against 140.3bp; 1.12% misses Figure 11 by 3-5bp under any
 reading of the option.
+
+---
+
+## Q4 (A8)
+
+**Could you publish the market curve beyond 30 years and the synthetic
+curves beyond 40 years (or the curve nodes)?**
+
+Y_eh and theta at the last plotted maturity depend on forwards up to five
+years further out. Reasonable extensions of the plotted curve move Y_eh(30y)
+on the market curve from 370.4 to 377.9 (yours: 376.4) and theta by the
+same amount the other way; convexity is unaffected. Inside the plotted
+range all extensions agree with your figures to 0.3bp.
