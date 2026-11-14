@@ -60,6 +60,29 @@ def local_vol(model: Model, y1, ybar, z):
     return jnp.clip(jnp.sqrt(zp) * lv, 0.0, model.vol_cap * model.sigma)
 
 
+def variance_step(model: Model, z, xi, dt):
+    """One step of the variance process (46) by Andersen's quadratic-exponential
+    scheme: the conditional mean and variance of z are matched exactly, so
+    E[z] = 1 holds without time-step bias even when eta is large and z spends
+    much of its time near zero. `xi` are standard normals."""
+    e = jnp.exp(-model.kappa_z * dt)
+    b1 = (1.0 - e) / model.kappa_z
+    m = 1.0 + (z - 1.0) * e
+    s2 = model.eta**2 * (z * e * b1 + 0.5 * model.kappa_z * b1**2)
+    psi = jnp.maximum(s2 / m**2, 1e-12)
+    # quadratic branch (psi <= 1.5); arguments clamped so the untaken branch
+    # stays finite under autodiff
+    pq = jnp.minimum(psi, 1.5)
+    b2 = 2.0 / pq - 1.0 + jnp.sqrt(2.0 / pq) * jnp.sqrt(2.0 / pq - 1.0)
+    quad = m / (1.0 + b2) * (jnp.sqrt(b2) + xi) ** 2
+    # exponential branch (psi > 1.5)
+    pe = jnp.maximum(psi, 1.5)
+    p0 = (pe - 1.0) / (pe + 1.0)
+    u = jnp.clip(jax.scipy.stats.norm.cdf(xi), 0.0, 1.0 - 1e-12)
+    expo = jnp.where(u > p0, jnp.log((1.0 - p0) / (1.0 - u)) * m / (1.0 - p0), 0.0)
+    return jnp.where(psi <= 1.5, quad, expo)
+
+
 class Profiles(NamedTuple):
     """Path means on the time grid, one row per independent batch: [K, N+1]."""
     t: jax.Array
@@ -100,7 +123,6 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
     def step(state, inp):
         x, y, z = state
         i, f0, f0d, y0, dy0, yb = inp
-        zp = jnp.maximum(z, 0.0)                              # full truncation
         y1 = y0 + Ad * x + c_y * y
         vol = local_vol(model, y1, yb, z)
         var = vol**2
@@ -113,7 +135,7 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
             xi = jnp.concatenate([xi, -xi], axis=2)
         y_new = y * decay_y + var * gain_y                    # exact for frozen var
         x_new = x - (dy0 + c_y * (y_new - y)) / Ad + vol * sqdt * xi[0]
-        z_new = z + model.kappa_z * (1.0 - zp) * dt + model.eta * jnp.sqrt(zp) * sqdt * xi[1]
+        z_new = variance_step(model, z, xi[1], dt)
         return (x_new, y_new, z_new), stats
 
     shape = (n_batches, draw_shape[2] * (2 if antithetic else 1))

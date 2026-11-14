@@ -62,7 +62,22 @@ def test_decomposition_closes(ns_curve, base_model, key, b, eta):
     assert np.all(np.abs(dec.residual) < 5 * dec.residual_se + 0.05 * BP)
 
 
-def test_variance_mean_is_one(ns_curve, base_model, key):
-    """Zero market price of volatility risk, eq. (63)."""
-    prof, _ = run(base_model._replace(eta=0.5), ns_curve, key)
-    np.testing.assert_allclose(jnp.mean(prof.z, axis=0), 1.0, atol=0.03)
+@pytest.mark.parametrize("eta", [0.5, 1.5])
+def test_variance_mean_is_one(ns_curve, base_model, key, eta):
+    """Zero market price of volatility risk, eq. (63): E^P[z(t)] = 1, with no
+    time-step bias even at the largest eta the paper uses."""
+    prof, _ = run(base_model._replace(eta=eta), ns_curve, key)
+    mean = jnp.mean(prof.z, axis=0)
+    se = jnp.std(prof.z, axis=0, ddof=1) / np.sqrt(prof.z.shape[0])
+    assert np.all(np.abs(mean - 1.0) < 5 * se + 1e-3)
+
+
+def test_variance_stationary_variance(ns_curve, base_model, key):
+    """Var[z] -> eta^2 / (2 kappa_z) for the square-root process with mean 1."""
+    from slidingcurve.model import variance_step
+    import jax
+    m = base_model._replace(eta=0.3, kappa_z=0.5)
+    z = jnp.ones(2**16)
+    for i in range(240):                                   # 20 years, monthly
+        z = variance_step(m, z, jax.random.normal(jax.random.fold_in(key, i), z.shape), 1 / 12)
+    np.testing.assert_allclose(jnp.var(z), 0.3**2 / (2 * 0.5), rtol=0.03)

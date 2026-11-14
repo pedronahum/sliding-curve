@@ -5,7 +5,8 @@ errors in implied normal volatility to first order, in basis points. That
 keeps the objective smooth and differentiable without inverting the Bachelier
 formula inside the optimiser. The Monte-Carlo pricer is run on fixed random
 numbers, so the objective is a deterministic function of the parameters and
-its Jacobian comes from forward-mode autodiff through the simulation.
+its Jacobian comes from forward-mode autodiff through the simulation
+(finite differences when eta is fitted; see below).
 """
 from typing import NamedTuple, Sequence
 
@@ -62,8 +63,12 @@ def calibrate(model: Model, curve, quotes, free: Sequence[str] = ("sigma",),
 
     x0 = np.array([getattr(model, n) for n in free], dtype=float)
     lo, hi = (np.array([_BOUNDS[n][k] for n in free]) for k in (0, 1))
+    # The variance scheme matches distributions, not paths, so its samples are
+    # not pathwise differentiable in eta: fall back to finite differences then.
+    ad = "eta" not in free
     sol = least_squares(lambda th: np.asarray(resid(jnp.asarray(th))), x0,
-                        jac=lambda th: np.asarray(jac(jnp.asarray(th))),
+                        jac=(lambda th: np.asarray(jac(jnp.asarray(th)))) if ad else "2-point",
+                        diff_step=None if ad else 1e-2,
                         bounds=(lo, hi), x_scale=[_SCALE[n] for n in free], xtol=1e-10)
     fitted = model._replace(**{n: float(v) for n, v in zip(free, sol.x)})
     p, se = swaption_prices(fitted, curve, swp, strikes, ybar_fn, key, n_paths, steps_per_year)

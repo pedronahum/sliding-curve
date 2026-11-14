@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 
 from .gaussian import A, B
-from .model import Model, local_vol
+from .model import Model, local_vol, variance_step
 
 
 class Swaption(NamedTuple):
@@ -69,7 +69,6 @@ def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
     c_y = Bd**2 / (2.0 * delta)
     e1, b1 = jnp.exp(-kappa * dt), B(kappa, dt)
     e2, b2 = jnp.exp(-2.0 * kappa * dt), B(2.0 * kappa, dt)
-    sqdt = jnp.sqrt(dt)
     half = n_paths // 2
     xs = (jnp.arange(n), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, expiry - t))
 
@@ -83,8 +82,7 @@ def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
         # exact for the linear part with volatility frozen over the step
         x_new = x * e1 + (y - var * g) * b1 + vol * jnp.sqrt(b2) * xi[0]
         y_new = y * e2 + var * b2
-        zp = jnp.maximum(z, 0.0)
-        z_new = z + model.kappa_z * (1.0 - zp) * dt + model.eta * jnp.sqrt(zp + 1e-12) * sqdt * xi[1]
+        z_new = variance_step(model, z, xi[1], dt)
         return (x_new, y_new, z_new), None
 
     init = (jnp.zeros(2 * half), jnp.zeros(2 * half), jnp.ones(2 * half))

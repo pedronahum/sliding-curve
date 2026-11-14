@@ -21,7 +21,7 @@ implementation written from the paper; it is not the authors' code.
 | Volatility scaling: zeroth order and bootstrap, eqs. (79)-(81) | `volscale.py` | tested, including its effect on at-the-money volatility |
 | Payer swaption / caplet pricer in the expiry-forward measure | `pricing.py` | Gaussian case matches Jamshidian's exact price |
 | Normal and displaced-lognormal quote conventions | `bachelier.py` | tested |
-| Calibration of `sigma`, `b`, `eta` with an autodiff Jacobian | `calibration.py` | recovers known parameters; `eta` fit not validated |
+| Calibration of `sigma`, `b`, `eta` (autodiff Jacobian; finite differences for `eta`) | `calibration.py` | recovers known parameters; `eta` fit not validated |
 | Test market: Joshi's displaced-diffusion LMM | `markets.py` | curve reprices the forwards exactly |
 | Skew `b` and stochastic volatility `eta` | `model.py`, `pricing.py` | **validated by model-free identities only** |
 
@@ -49,6 +49,28 @@ volatilities to under 0.1bp (`sigma = 1.79%`, `b = 0.52`).
 
 ![Calibration on Joshi's market](docs/joshi_calibration.png)
 
+### Stochastic volatility and convexity (Section 9.3)
+
+`examples/stochvol_sweep.py` produces the analogues of Figures 7-9 on the
+illustrative curve (about five minutes on a CPU at the default 131,072 paths).
+
+![Stochastic-volatility sweep](docs/stochvol_sweep.png)
+
+| eta | 20y x 5y ATM vol, sigma fixed | sigma recalibrated to ATM | convexity vs eta = 0 |
+|---|---|---|---|
+| 0 | 88.8bp | 1.000% | 1.00 |
+| 0.5 | 83.8bp | 1.059% | 1.12 |
+| 1.0 | 74.8bp | 1.188% | 1.41 |
+| 1.5 | 66.7bp | 1.336% | 1.78 |
+
+The paper's three qualitative findings are reproduced: at fixed `sigma`
+convexity does not move with `eta`; at-the-money volatility falls as `eta`
+rises; and holding at-the-money volatility fixed raises convexity. One number
+can be compared directly: Section 8.2 quotes an uplift of about 15%, 16% and
+17.5% for `eta = 0.6` over ten years at `kappa = 0`, `0.03` and `0.05`; this
+code gives 13.4%, 15.1% and 16.4%. The levels in the figure are not
+comparable with the paper's, since the curve differs.
+
 This is **not** the paper's data. The market is a model with a pure
 displaced-diffusion skew, its curve runs from 0.8% to 8.8% and stops at 20.5
 years, and swaption quotes come from the frozen-weights approximation. It
@@ -63,8 +85,8 @@ exercises the machinery; it does not reproduce Figures 10-13.
    exercised but not meaningfully tested. Tables from Brigo and Mercurio could
    not be verified from a primary source and are not included;
    `markets.Quotes` and `Curve.from_zero_nodes` take them once typed in.
-3. **Stochastic-volatility sweep at fixed at-the-money volatility** (Figures
-   7-9) and the paper's figure scripts in general.
+3. **Skew sweep at fixed at-the-money volatility** (Figures 3-6), with `sigma`
+   recalibrated at each `b` on top of the bootstrap scaling.
 4. **Market-curve bootstrap** from swap quotes.
 5. **Short-rate density** under P (Figure 13).
 6. **Multi-factor model** (`d > 1`), the Ho-Lee checks of Appendix E, and the
@@ -79,7 +101,8 @@ clarify them:
 - **Time stepping.** Monthly for the decomposition, 24 steps a year for pricing. `y` is advanced exactly for frozen
   volatility, and the drift of `x` is the increment that keeps the benchmark
   yield an exact discrete martingale; only the diffusion is Euler.
-- **Variance process.** Full-truncation Euler.
+- **Variance process.** Andersen's quadratic-exponential scheme (full-truncation
+  Euler lost up to 4% of `E[z]` at `eta = 1.5`).
 - **Volatility cap** (Remark 8). Applied to `sigma_r` at 10x `sigma`; the
   local volatility is floored at zero.
 - **Bootstrap grid** `T_m` for the volatility scaling: annual by default.
@@ -90,9 +113,10 @@ clarify them:
 
 ```bash
 pip install -e ".[dev]"
-pytest                                   # 41 tests, about a minute on CPU
+pytest                                   # 45 tests, about two minutes on CPU
 python examples/gaussian_decomposition.py
 python examples/joshi_calibration.py
+python examples/stochvol_sweep.py
 ```
 
 ```python
