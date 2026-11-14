@@ -36,6 +36,7 @@ paper are accurate to about 0.3bp (checked below).
 | C4 | Curve bootstrap from swap quotes | **built**, with tests |
 | C5 | Equilibrium-rate and front-end refinements | **built** (one factor), with tests |
 | C6 | GPU run | **built**: timings on CPU and GPU |
+| C7 | Second smile market | **built**, data verified against the source |
 
 ---
 
@@ -1044,3 +1045,45 @@ devices.
 that is ~90 GB of the host's RAM, and the first attempt ran the machine out
 of memory. Run with `XLA_PYTHON_CLIENT_PREALLOCATE=false` (peak use was
 then about 6 GB); the script's docstring says so.
+
+---
+
+## C7. A second smile market from published sources
+
+**Status: built**, with tests; data verified against the primary source.
+
+`markets.choi_2017_10y10y()`: the USD 10y x 10y swaption smile of 14 March
+2017 (Reuters), from J. Choi, C. Liu, B. K. Seo, "Hyperbolic normal
+stochastic volatility model", J. Futures Markets 39(2), 2019, arXiv:1809.04035
+(v1, the only version). Checked against the PDF on 2026-11-14:
+
+- Section 4.1: market prices from Reuters on 14 March 2017, in units of the
+  annuity; models calibrated to reproduce prices at strikes F and F +- 1%.
+- Table 3, 10y10y (T = 10) column: forward F = 3.0673%.
+- Table 4 (10y10y, analytic prices): at K - F = -100, 0, +100bp,
+  1.506E-2, 9.083E-3, 5.108E-3, identical for lambda = 0 and lambda = 1, as
+  exact calibration at those strikes requires. These three are the market
+  values; the other rows of Table 4 (-200, +200, +300bp) differ between the
+  two models and are model prices, not quotes, so they are not used.
+
+Implied normal vols: 73.00, 72.00, 73.42bp. The source gives no discount
+curve or swap conventions; `examples/second_market.py` assumes a flat
+continuous curve that reproduces F with a semi-annual fixed leg, and says
+so. Its fits (`experiments/results/second_market.log`):
+
+| free | sigma | b | eta | errors at -100, 0, +100 (bp of vol) | gamma 10, 20, 30y |
+|---|---|---|---|---|---|
+| sigma | 0.950% | 0 | 0 | -0.58, +0.78, -0.21 | 12.1, 39.3, 72.6 |
+| sigma, b | 0.950% | -0.012 | 0 | -0.40, +0.78, -0.39 | 12.1, 39.2, 72.4 |
+| sigma, b, eta | 1.008% | -0.013 | 0.599 | 0.00, 0.00, 0.00 | 13.6, 44.2, 81.6 |
+
+The smile is nearly symmetric (a smile, not a skew), so b is close to zero
+and eta carries the curvature; three quotes for three parameters fit
+exactly, so the third row is not a test of the model.
+
+Brigo and Mercurio's tables, considered earlier, could not be checked
+against a primary source and are not included.
+
+**Tests** (`tests/test_second_market.py`): the values are those of the
+source; the prices are above intrinsic, decreasing with slope above -1 and
+convex in strike; they invert to the vols above.

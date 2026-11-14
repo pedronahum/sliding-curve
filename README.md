@@ -26,6 +26,7 @@ implementation written from the paper; it is not the authors' code.
 | The paper's curves, smile quotes and plotted results, digitised | `markets.py`, `data/` | reproduce Figures 2, 3, 5-13 except 4 (see below) |
 | Options on the benchmark yield and calibration to their smile | `pricing.py`, `calibration.py` | reproduce the paper's `sigma` and skew fit |
 | Skew `b` and stochastic volatility `eta` | `model.py`, `pricing.py` | **validated by model-free identities only** |
+| Second smile market: USD 10y x 10y, 14 March 2017 (Choi, Liu and Seo, Tables 3-4) | `markets.py`, `examples/second_market.py` | values checked against the source |
 | Curve bootstrap from deposits and par swaps | `bootstrap.py` | reprices its inputs to 1e-12 |
 | Forward-rate decomposition (20), Eurodollar futures and Morton's construction, Appendix F | `forward.py` | closes; averages to the yield decomposition (Proposition 5) |
 | Ho-Lee closed forms, Appendix E | `holee.py` | tested against the printed formulas, the Appendix D limit and Monte Carlo |
@@ -244,9 +245,6 @@ reproduces the Jensen ratio to 0.1 points.
    inside the sensitivity to the volatility cap (A2); the vol-of-vol gap is
    most plausibly the paper's own sampling noise (A3). Both need the
    authors' input.
-3. **A second smile market.** Tables from Brigo and Mercurio could not be
-   verified from a primary source and are not included; `markets.Quotes` and
-   `Curve.from_zero_nodes` take them once typed in.
 6. Quasi-random numbers (Sobol with a Brownian bridge). B4 used a Gaussian
    control variate instead, which removes most of the noise that matters.
 
