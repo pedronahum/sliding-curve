@@ -43,6 +43,41 @@ paper are accurate to about 0.3bp (checked below).
 | C6 | GPU run | **built**: timings on CPU and GPU |
 | C7 | Second smile market | **built**, data verified against the source |
 
+## Summary
+
+*What changed.* The yield option is pinned down from the paper's own
+numbers (A9: the continuously compounded forward yield Y(T, T, T + 5);
+strikes as offsets from the model mean by default, the forward reading
+available and bounded). The volatility-scaling bootstrap now runs on a
+converged monthly grid (A2). The Figure 8 comparison uses absolute strikes
+(A4). Calibration with eta free uses autodiff through a variance step that
+is smooth in eta (B1), runs 2.6x faster on one core and 16x on all cores
+(B2), and yield options can be priced with a Gaussian-twin control variate
+(B4). Built: the multi-factor model with the general bootstrap (C1), the
+Ho-Lee closed forms (C2), the forward-rate decomposition and Appendix F
+(C3), a curve bootstrap (C4), the equilibrium-rate and front-end drifts
+(C5), a GPU run (C6) and a second, source-verified smile market (C7). Tests
+went from 57 to 101; library defaults were not changed to chase a figure.
+
+*What matches, and how closely.* Figure 2 to 0.24bp (digitisation error;
+Monte Carlo against closed form 0.002bp). sigma = 1.157% for the 82bp
+at-the-money vol (1.1572% at any seed with the control variate). With the
+paper's skew parameters (1.1999%, b = 0.367), Figure 11 to -0.4..+0.7bp and
+Figure 12 gamma(30y) 140.5 +- 0.2 against 140.3. Figure 9 at eta = 0.5 and
+1.0 to 0.1 and 1.2bp. The Section 8.2 uplifts are the exact Jensen ratio,
+14.5/16.3/17.5% against ~15/16/17.5%.
+
+*What is still open* (each with a question in `questions_for_authors.md`):
+Figure 4, which contradicts the paper's text, its Figure 8 and the Gaussian
+limit (A1, Q6); convexity at b = 1 and 40y 1.7-2.6% low, inside the
+sensitivity to the undefined cap (A2, Q7); Figure 9 at eta = 1.5, 202.7 +-
+1.3 against 212.8bp (A3, Q2); the Figure 8 eta = 0 level, 71.4 against the
+closed form's 70.9bp (A4, Q2); the skew fit's weights and path count (A6, Q2-Q3);
+eta's identification in the three-parameter fit (A7, Q5); the curve beyond
+the plotted range, a 7.5bp spread in Y_eh at 30y across extensions (A8, Q4); and the strike
+reference of the yield option (A9, Q1). A licence is still to be chosen
+(B5), and quasi-random numbers were not added (B4 used a control variate).
+
 ---
 
 ## Digitisation check (all A items)

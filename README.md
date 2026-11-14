@@ -238,6 +238,9 @@ reproduces the Jensen ratio to 0.1 points.
 
 ## Not done yet
 
+The status of every investigated issue, with a summary, is in
+`docs/investigation.md`; open questions are in `docs/questions_for_authors.md`.
+
 1. **Figure 4** is not reproduced and is inconsistent with the paper's text
    and its Figure 8 (A1); it needs the authors' input.
 2. **Convexity at high skew or high vol-of-vol** is 1.7-2.6% (skew) and 4%
