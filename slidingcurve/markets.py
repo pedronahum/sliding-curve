@@ -142,3 +142,36 @@ def paper_curve(which: str = "baseline") -> Curve:
     ext = _NODES[-1] + np.array([2.5, 5.0])
     return Curve.from_zero_nodes(np.concatenate([[0.0], _NODES, ext]),
                                  np.concatenate([[y0], nodes, np.polyval(quad, ext)]))
+
+
+# --- a second smile market from a published source ------------------------------
+
+CHOI_2017_SOURCE = (
+    "J. Choi, C. Liu, B. K. Seo, 'Hyperbolic normal stochastic volatility model', "
+    "Journal of Futures Markets 39(2), 2019; arXiv:1809.04035, Section 4.1 and Tables 3-4. "
+    "USD swaptions, Reuters, 14 March 2017.")
+
+
+def choi_2017_10y10y():
+    """Three market prices of the USD 10y x 10y swaption smile, 14 March 2017.
+
+    The paper does not tabulate its market quotes (they appear only in its
+    Figure 3); its Table 4 gives prices of models that Section 4.1 says were
+    calibrated to reproduce the market at strikes F, F +- 1% exactly. At
+    those three strikes the two calibrated models (lambda = 0 and 1) print
+    identical prices to four figures, as exact calibration requires; those
+    are the values here. Prices are in units of the annuity; the forward
+    swap rate is F = 3.0673% (Table 3); expiry 10 years.
+
+    What the source does not give: the discount curve and the swap's fixed-
+    leg conventions. Anything that needs them (a pricer in this model) must
+    assume them; see examples/second_market.py.
+
+    Returns (expiry, forward, strike offsets, prices per unit annuity,
+    implied normal vols), decimals.
+    """
+    expiry, fwd = 10.0, 0.030673
+    offsets = np.array([-0.01, 0.0, 0.01])
+    prices = np.array([1.506e-2, 9.083e-3, 5.108e-3])     # Table 4, K - F = -100, 0, +100bp
+    vols = bl.implied_normal_vol(prices, fwd, fwd + offsets, expiry)
+    return expiry, fwd, offsets, prices, vols

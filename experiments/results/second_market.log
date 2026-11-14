@@ -1,0 +1,6 @@
+J. Choi, C. Liu, B. K. Seo, 'Hyperbolic normal stochastic volatility model', Journal of Futures Markets 39(2), 2019; arXiv:1809.04035, Section 4.1 and Tables 3-4. USD swaptions, Reuters, 14 March 2017.
+assumed curve: flat 3.0440% (continuous), semi-annual fixed leg; annuity 6.3105
+market normal vols (bp) at -100, 0, +100: 73.00 72.00 73.42
+fit sigma         : sigma 0.950% b +0.000 eta 0.000 | errors -0.58 +0.78 -0.21 bp | gamma(10, 20, 30y) 12.1 39.3 72.6 bp
+fit sigma+b       : sigma 0.950% b -0.012 eta 0.000 | errors -0.40 +0.78 -0.39 bp | gamma(10, 20, 30y) 12.1 39.2 72.4 bp
+fit sigma+b+eta   : sigma 1.008% b -0.013 eta 0.599 | errors +0.00 +0.00 +0.00 bp | gamma(10, 20, 30y) 13.6 44.2 81.6 bp
