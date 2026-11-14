@@ -30,6 +30,7 @@ paper are accurate to about 0.3bp (checked below).
 | A7 | Three-parameter fit | **explained**: eta not identified at Monte-Carlo precision; question to authors |
 | A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
+| C1 | Multi-factor model | **built**, with tests |
 | C5 | Equilibrium-rate and front-end refinements | **built** (one factor), with tests |
 
 ---
@@ -901,3 +902,40 @@ the refinements are not wired into `multifactor.simulate_multi`.
 Not a fix to any figure: no result of Sections 7-9 uses the refinements,
 and the default drift is unchanged, so Figures 2, 3, 5, 6, 9-13 and
 sigma = 1.157% are untouched (full suite: 101 tests pass).
+
+---
+
+## C1. Multi-factor model (d > 1)
+
+**Status: built**, with tests. `slidingcurve/multifactor.py`.
+
+d factors with constant mean reversions kappa_i, benchmark tenors
+0 = delta_0 < delta_1 < ... < delta_d and benchmark forward yields
+Y_i(t) = Y(t, t + delta_{i-1}, t + delta_i) (Section 5.1). With constant
+kappa the matrices of Section 6 are constant: H^Y = M H with
+M_ij = exp(-kappa_j delta_{i-1}) A(kappa_j, Delta_i), so H (H^Y)^-1 = M^-1.
+The simulator (`simulate_multi`) implements the P-dynamics (52) with the
+market price of risk (30), the benchmark drifts (27)/(45) and
+sigma_r' sigma_r = z M^-1 S X S M^-T, (56); it is discretised as the one-
+factor model (y exact for frozen volatility, x drift the increment that
+keeps every benchmark an exact discrete martingale). Local volatility
+generalises the basis-point convention of Section 9.1 per benchmark, with
+skews b_i, a common stochastic variance z, the floor at zero and the cap of
+Remark 8. `decompose_multi` evaluates (13), (54), (55) as quadratures (G is
+deterministic). The general volatility-scaling bootstrap of Appendix C.3.2
+(`ybar_bootstrap_multi`, weighted or unweighted, piecewise-constant
+Ybar_j) and the zeroth-order (79) are included, with Gaussian closed forms
+for the decomposition, E^P[x] and E^{Q^tau}[x] (the multi-factor (89)-(90)).
+
+**Tests** (`tests/test_multifactor.py`):
+
+| check | against | tolerance |
+|---|---|---|
+| d = 1 Gaussian Y_eh, theta, gamma at 5, 20, 40y; E^{Q^tau}[x] (90) | Appendix D closed forms (`gaussian.py`) | 1e-10 |
+| E^{Q^tau}[x] solves the multi-factor ODE (89), vanishes at tau (Remark 15) | autodiff of the closed form | 1e-14 |
+| Gaussian Monte Carlo, d = 1 and d = 2 (kappa 0.02/0.4, tenors 2/10y, correlation 0.7), Y_eh, theta, gamma at 10, 25, 40y and E^P[x] on the grid | closed forms | 0.02bp; gamma 0.2% |
+| d = 2 with skews 0.6/0.3 and eta = 0.8: benchmarks are P-martingales (26), and (12) closes | model-free identities | 4 s.e.; 3 s.e. + 0.02bp |
+| one-step covariance of the benchmark increments is S X S dt | (56) | 1e-12 |
+| general bootstrap at d = 1 equals the one-factor bootstrap (weighted and unweighted); with (78) in place of the closed form it returns the forwards (79) | `volscale.py` | 1e-13 |
+
+Not a fix to any figure; the one-factor code is untouched.
