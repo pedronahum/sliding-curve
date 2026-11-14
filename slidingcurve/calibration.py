@@ -49,7 +49,7 @@ def _solve(model, free, resid_fn):
 
 def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sigma", "b"),
                           weights=None, key=None, n_paths=2**15, steps_per_year=24,
-                          bootstrap_expiries=None) -> Fit:
+                          bootstrap_expiries=None, strike_reference="mean") -> Fit:
     """Fit to normal vols of options on the benchmark yield (see
     pricing.yield_option_prices), quoted at strike offsets from at-the-money.
     `weights` scales the residuals, e.g. a large weight on the at-the-money
@@ -59,26 +59,30 @@ def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sig
     With eta free the problem has more than one basin: a second, spurious fit
     exists at a sigma above 2.5% and eta above 1.5, where the volatility cap
     does the work. Start from a skew-only fit and a moderate eta."""
-    from .pricing import yield_option_prices
+    from .pricing import yield_option_moneyness, yield_option_prices
     key = jax.random.PRNGKey(0) if key is None else key
     if "eta" in free and model.eta == 0.0:
         model = model._replace(eta=0.3)
     offsets, vols = np.asarray(offsets, dtype=float), np.asarray(vols, dtype=float)
     w = jnp.ones(len(vols)) if weights is None else jnp.asarray(weights, dtype=float)
     grid = np.arange(1.0, np.ceil(expiry) + 1.0) if bootstrap_expiries is None else bootstrap_expiries
-    target = bl.normal_price(0.0, jnp.asarray(offsets), jnp.asarray(vols), expiry)
-    vega = bl.normal_vega(0.0, jnp.asarray(offsets), jnp.asarray(vols), expiry)
+    vj = jnp.asarray(vols)
 
-    def price(theta):
-        m = model._replace(**{name: theta[i] for i, name in enumerate(free)})
-        return yield_option_prices(m, curve, expiry, offsets, volscale.bootstrap_fn(curve, m, grid),
-                                   key, n_paths, steps_per_year)
+    def priced(m):
+        mean, p, se = yield_option_prices(m, curve, expiry, offsets, volscale.bootstrap_fn(curve, m, grid),
+                                          key, n_paths, steps_per_year, strike_reference)
+        k = yield_option_moneyness(curve, m, expiry, offsets, mean, strike_reference)
+        # market prices at the same moneyness: quotes are vols at reference + offset
+        return p, se, k, bl.normal_price(0.0, k, vj, expiry), bl.normal_vega(0.0, k, vj, expiry)
 
-    sol = _solve(model, free, lambda th: 1e4 * w * (price(th)[1] - target) / vega)
+    def resid(theta):
+        p, _, _, target, vega = priced(model._replace(**{n: theta[i] for i, n in enumerate(free)}))
+        return 1e4 * w * (p - target) / vega
+
+    sol = _solve(model, free, resid)
     model = model._replace(**{n: float(v) for n, v in zip(free, sol.x)})
-    _, p, se = yield_option_prices(model, curve, expiry, offsets,
-                                   volscale.bootstrap_fn(curve, model, grid), key, n_paths, steps_per_year)
-    model_vols = bl.implied_normal_vol(np.asarray(p), 0.0, offsets, expiry)
+    p, se, k, _, vega = priced(model)
+    model_vols = bl.implied_normal_vol(np.asarray(p), 0.0, np.asarray(k), expiry)
     return Fit(model, 1e4 * (model_vols - vols), model_vols, 1e4 * np.asarray(se / vega),
                bool(sol.success))
 

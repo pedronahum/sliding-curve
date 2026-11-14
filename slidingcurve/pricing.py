@@ -112,27 +112,52 @@ def swaption_prices(model: Model, curve, swp: Swaption, strikes, ybar_fn, key,
 
 
 def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
-                        n_paths=2**15, steps_per_year=24):
+                        n_paths=2**15, steps_per_year=24, strike_reference="mean"):
     """Options on the benchmark yield Y_1(T) = Y(T, T, T + delta) itself: the
-    paper's "yield option" (Figures 4 and 11).
+    paper's "yield option" (Figures 4, 8 and 11).
 
-    The paper does not define the contract. The reading used here is the one
-    that reproduces its quoted sigma = 1.157% for an 82bp at-the-money vol:
-    the yield is simulated in the (T + delta)-forward measure, the measure of
-    the calibration caplets and of the volatility-scaling bootstrap, and
-    strikes are offsets from the model's own mean of the yield in that
-    measure. In the Gaussian case the implied normal volatility is then flat
-    and equal to A(delta) sigma sqrt(B_{2 kappa}(T) / T).
+    The paper does not define the contract. What its numbers pin down (see
+    docs/investigation.md, A9):
+
+    - the underlying is the continuously compounded forward yield: only it
+      gives the paper's sigma = 1.1572% for an 82bp at-the-money vol (a
+      simple rate needs 0.93%, a par swap rate 1.10-1.14%);
+    - the measure is the (T + delta)-forward measure of the calibration
+      caplets: only it reproduces the fitted vols of Figure 11 at the
+      paper's stated parameters (payment at T instead is 12-14bp off);
+    - the implied vol is inverted around the model's own mean of the yield
+      in that measure (inverting around the curve forward gives 7-9bp
+      errors against Figure 8 and prices below intrinsic).
+
+    Strikes are `offsets` from a reference: the model mean
+    (strike_reference="mean") or the curve forward Y(0, T, T + delta)
+    ("forward"), which is where the paper draws its at-the-money line in
+    Figures 4, 8 and 11. In the Gaussian case the smile is flat at
+    A(delta) sigma sqrt(B_{2 kappa}(T) / T) and the choice is immaterial.
 
     Returns (mean yield, undiscounted call prices per offset, standard errors).
+    Prices are E[(Y_1 - K)^+]; invert them with forward = mean and strike
+    K = reference + offset (see yield_option_moneyness).
     """
     kappa, delta = model.kappa, model.delta
+    Ad, cy = A(kappa, delta), B(kappa, delta) ** 2 / (2.0 * delta)
+    fwd = curve.fwd_yield(expiry, expiry + delta)
     x, y = simulate_terminal(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
                              measure_maturity=expiry + delta)
-    y1 = curve.fwd_yield(expiry, expiry + delta) + A(kappa, delta) * x \
-        + B(kappa, delta) ** 2 / (2.0 * delta) * y
+    y1 = fwd + Ad * x + cy * y
     mean = jnp.mean(y1)
-    pay = jnp.maximum(y1[None, :] - mean - jnp.asarray(offsets)[:, None], 0.0)
+    off = jnp.asarray(offsets)[:, None]
+    ref = mean if strike_reference == "mean" else fwd
+    pay = jnp.maximum(y1[None, :] - ref - off, 0.0)
     half = pay.shape[1] // 2
     pairs = 0.5 * (pay[:, :half] + pay[:, half:])
     return mean, jnp.mean(pairs, axis=1), jnp.std(pairs, axis=1, ddof=1) / jnp.sqrt(half)
+
+
+def yield_option_moneyness(curve, model, expiry, offsets, mean, strike_reference="mean"):
+    """Strike minus forward for inverting yield_option_prices: the offsets
+    themselves for the mean reference, offsets + (Y(0,T,T+delta) - mean) for
+    the forward reference."""
+    if strike_reference == "mean":
+        return jnp.asarray(offsets)
+    return jnp.asarray(offsets) + curve.fwd_yield(expiry, expiry + model.delta) - mean

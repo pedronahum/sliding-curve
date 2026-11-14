@@ -119,10 +119,15 @@ Three things to know:
 - **The paper states two values of `sigma` for the skew fit**: 1.12% in the
   text of Section 9.4 and 1.1999% in the caption of Figure 13. Only 1.1999%
   reproduces Figure 12 and the fitted smile of Figure 11.
-- **The "yield option" is not defined in the paper.** The reading used here
-  (see `pricing.yield_option_prices`) was chosen because it reproduces
-  `sigma = 1.157%`; that the same reading then reproduces the skew fit and
-  Figure 12 is the evidence for it.
+- **The "yield option" is not defined in the paper.** Its numbers pin it
+  down (`docs/investigation.md`, A9): the underlying is the continuously
+  compounded forward yield (the only one that gives `sigma = 1.1572%`), paid
+  at the end of its window (the only payment date that reproduces the
+  paper's own Figure 11 fit at its stated parameters), with vols inverted
+  around the yield's mean in that measure. Whether strikes are offsets from
+  that mean or from the curve forward is not determined: Figure 11 favours
+  the mean, Figure 8 the forward. `strike_reference=` offers both; the
+  default is the mean.
 - **The fit differs slightly from the paper's** (`b` 0.35 against 0.367).
   The quotes are read off a plot to about 0.3bp and the paper does not state
   its fitting weights; here the at-the-money quote is pinned and the rest are

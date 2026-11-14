@@ -1,0 +1,14 @@
+
+baseline curve, sigma = 1%:
+  continuous yield Y1                70.86bp   sigma for 82bp: 1.1572%
+  simple rate L(T,T+5) (caplet)      85.92bp   sigma for 82bp: 0.9544%
+  par swap, annual                   73.80bp   sigma for 82bp: 1.1112%
+  par swap, semi-annual              72.39bp   sigma for 82bp: 1.1328%
+  par swap, quarterly                71.69bp   sigma for 82bp: 1.1438%
+
+market curve, sigma = 1%:
+  continuous yield Y1                70.86bp   sigma for 82bp: 1.1572%
+  simple rate L(T,T+5) (caplet)      88.48bp   sigma for 82bp: 0.9267%
+  par swap, annual                   74.34bp   sigma for 82bp: 1.1031%
+  par swap, semi-annual              72.70bp   sigma for 82bp: 1.1279%
+  par swap, quarterly                71.90bp   sigma for 82bp: 1.1405%
