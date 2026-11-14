@@ -146,13 +146,15 @@ Three things to know:
   paper's values lie inside that band, 1.5bp from this code's quadratic
   extension. Convexity is unaffected (A8).
 
-The three-parameter fit including `eta` converges, to `sigma = 1.80%`,
-`b = 0.36`, `eta = 1.39` with errors under 1.5bp, not to the paper's
-`1.492%`, `0.417`, `0.779`. At the paper's parameters this code's smile is
-within 2.6bp of the market, so both are acceptable fits: `sigma` and `eta`
-trade off along a flat valley and are weakly identified by five quotes. (A
-second, spurious basin exists above `sigma = 2.5%` where the volatility cap
-does the work; the paper itself rejects the three-parameter decomposition.)
+The three-parameter fit including `eta` is not identified by five quotes at
+Monte-Carlo precision (A7). Profiling `eta` (refitting `sigma` and `b` at
+each value) the rms error falls monotonically from 2.87bp at `eta = 0` to
+1.30bp at 1.6, and beyond 0.8 by less than one quote's pricing s.e. (about
+1.3bp), so where a fit stops is set by its random numbers. The paper's point
+(1.492%, 0.417, 0.779) and this code's earlier one (1.80%, 0.36, 1.39) lie
+on the same valley, along which `gamma(30y)` runs from 137 to 464bp (316 at
+the paper's point). The "spurious basin" above `sigma = 2.5%` is the same
+valley at larger `eta`. This is the paper's own conclusion in other words.
 
 **Figure 13** (short-rate densities under P, `examples/short_rate_density.py`):
 

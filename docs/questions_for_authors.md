@@ -72,3 +72,17 @@ years further out. Reasonable extensions of the plotted curve move Y_eh(30y)
 on the market curve from 370.4 to 377.9 (yours: 376.4) and theta by the
 same amount the other way; convexity is unaffected. Inside the plotted
 range all extensions agree with your figures to 0.3bp.
+
+---
+
+## Q5 (A7)
+
+**In your three-parameter fit, did the objective have an interior minimum
+at eta = 0.779?**
+
+Profiling eta (sigma and b refitted at each eta) we find the rms error
+falls monotonically, 2.87bp at eta = 0 to 1.30bp at 1.6, and beyond 0.8 by
+less than one quote's Monte-Carlo s.e. (about 1.3bp). Your point and ours
+(1.80%, 0.36, 1.39) both lie on that valley, along which gamma(30y) runs
+from 137 to 464bp (316bp at your point). If your objective had a clear
+minimum at 0.779, something in the set-up differs from ours.

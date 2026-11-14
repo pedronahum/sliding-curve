@@ -25,6 +25,7 @@ paper are accurate to about 0.3bp (checked below).
 | A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); **paper inconsistency** (level) |
 | A5 | Section 8.2 uplift | **explained** |
 | A6 | Skew fit | **explained** to within Monte-Carlo noise; question to authors |
+| A7 | Three-parameter fit | **explained**: eta not identified at Monte-Carlo precision; question to authors |
 | A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
 | A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
 
@@ -366,3 +367,50 @@ The difference corresponds to a 0.5bp shift of the fitted smile level, the
 size of one pricing s.e. of either code. With the control variate of B4 the
 fit noise falls (see B4), which leaves the paper's own path count and
 weights as the open question.
+
+---
+
+## A7. The three-parameter fit
+
+**Status: explained. eta is not identified by the five quotes at
+Monte-Carlo precision, which is the paper's own conclusion in different
+words.** Both the paper's point and this code's lie on the same valley.
+
+`experiments/a7_three_param.py` profiles the fit: eta fixed on a grid,
+(sigma, b) fitted by autodiff with the at-the-money quote pinned, 32,768
+paths, strikes from the mean.
+
+| eta | sigma | b | errors at -200, -50, 0, +50, +200 | rms | gamma(30y) |
+|---|---|---|---|---|---|
+| 0 | 1.194% | 0.353 | -4.26 -0.04 0.01 -0.60 -4.77 | 2.87 | 136.9 +- 0.3 |
+| 0.4 | 1.271% | 0.366 | -3.37 0.07 0.01 -0.58 -4.07 | 2.38 | 171.7 +- 1.3 |
+| 0.6 | 1.365% | 0.382 | -2.70 0.11 0.01 -0.53 -3.54 | 2.00 | 223.9 +- 2.7 |
+| **0.779** | 1.468% | 0.395 | -2.26 0.15 0.01 -0.54 -3.21 | 1.77 | 290.5 +- 4.0 |
+| 1.0 | 1.597% | 0.399 | -1.98 0.23 0.01 -0.53 -2.82 | 1.56 | 377.0 +- 6.3 |
+| 1.2 | 1.698% | 0.391 | -1.77 0.26 0.00 -0.53 -2.68 | 1.46 | 434.3 +- 7.8 |
+| **1.39** | 1.787% | 0.372 | -1.61 0.33 0.00 -0.52 -2.46 | 1.34 | 457.5 +- 8.6 |
+| 1.6 | 1.859% | 0.349 | -1.56 0.39 0.00 -0.61 -2.35 | 1.30 | 464.1 +- 9.4 |
+
+| point | errors | rms | gamma(30y) |
+|---|---|---|---|
+| paper (1.492%, 0.417, 0.779) | -2.61 0.56 0.60 0.22 -2.01 (s.e. up to 1.27) | 1.52 | 315.6 +- 4.4 |
+| this code's earlier fit (1.80%, 0.36, 1.39) | -0.84 1.15 0.84 0.31 -1.65 (s.e. up to 1.44) | 1.05 | 463.6 +- 8.6 |
+| full fit started at sigma 2.6%, eta 2 | -0.99 1.16 0.78 0.18 -1.29 at (1.95%, 0.32, 2.27) | | |
+
+- The rms error falls monotonically along the valley; it has no interior
+  minimum. Beyond eta ~ 0.8 the whole improvement (1.77 to 1.30bp) is
+  smaller than the pricing s.e. of a single quote (about 1.3bp with
+  stochastic volatility), so where a fit "converges" is set by the noise
+  of its random numbers. The paper's point is within two s.e. of the
+  quotes, as is this code's.
+- The "spurious basin" is not separate: it is the same valley continued to
+  larger eta, where the cap starts to do work.
+- What the valley does to convexity is the point the paper makes: gamma(30y)
+  runs from 137 to 464bp across fits that are equally good to Monte-Carlo
+  precision; at the paper's own point it is 316bp ("not economically
+  plausible").
+
+The B1 lognormal variance scheme makes this fit differentiable in eta (and
+faster), but it cannot make eta identified. What would: more expiries or
+the curvature of the smile further out, or far more paths (the s.e. has to
+fall below the 0.5bp rms differences along the valley).
