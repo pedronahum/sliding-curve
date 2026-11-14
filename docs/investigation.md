@@ -35,6 +35,7 @@ paper are accurate to about 0.3bp (checked below).
 | C3 | Forward-rate decomposition, Appendix F | **built**, with tests |
 | C4 | Curve bootstrap from swap quotes | **built**, with tests |
 | C5 | Equilibrium-rate and front-end refinements | **built** (one factor), with tests |
+| C6 | GPU run | **built**: timings on CPU and GPU |
 
 ---
 
@@ -1010,3 +1011,36 @@ are rejected.
 The paper's market curve (Section 9.4) is still the digitised Figure 10
 curve: the paper gives no swap quotes, so there is nothing to bootstrap
 from; this builds the tool for a user who has them.
+
+---
+
+## C6. GPU run and timings
+
+**Status: built.** `experiments/c6_gpu_timings.py`, results in
+`experiments/results/c6_timings_{cpu,cpu16,gpu}.json`. Machine: NVIDIA GB10
+(unified memory shared with the host, 121 GB) and its 20-core ARM CPU; JAX
+0.12 with CUDA for the GPU run. Times exclude compilation except the fit
+(end to end); float64 throughout.
+
+| workload | CPU, 1 device | CPU, 16 devices | GPU |
+|---|---|---|---|
+| pricing, 20y, Q^(T+delta), b = 0.35, 24 steps/yr, 65,536 paths | 1.84s | 0.19s | 0.08s |
+| same, 1,048,576 paths | 31.6s | 3.07s | 1.16s |
+| decomposition, 40y, b = 1, monthly, 65,536 paths | 1.07s | 1.14s | 0.19s |
+| same, 1,048,576 paths | 12.1s | 12.1s | 1.28s |
+| (sigma, b) skew fit, 32,768 paths | 13.6s | 3.6s | 3.6s |
+
+The GPU reproduces the one-device CPU results to every printed digit (mean
+x -0.0087041617 at 2^20 paths, gamma(40y) 317.6585bp, fit sigma 1.195693%,
+b 0.353936): same random numbers, same float64 arithmetic. The 16-device
+CPU run differs within Monte-Carlo error, as documented in B2 (each device
+draws its own numbers). Speed-up of the GPU over one core: 27x on 2^20-path
+pricing, 9.5x on the decomposition; the decomposition simulator is not
+path-sharded on the CPU, hence no gain there from 16 devices. The fit is
+dominated by small sequential operations and gains nothing over 16 CPU
+devices.
+
+**Memory.** JAX preallocates 75% of device memory by default; on a GB10
+that is ~90 GB of the host's RAM, and the first attempt ran the machine out
+of memory. Run with `XLA_PYTHON_CLIENT_PREALLOCATE=false` (peak use was
+then about 6 GB); the script's docstring says so.

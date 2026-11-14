@@ -247,7 +247,8 @@ reproduces the Jensen ratio to 0.1 points.
 3. **A second smile market.** Tables from Brigo and Mercurio could not be
    verified from a primary source and are not included; `markets.Quotes` and
    `Curve.from_zero_nodes` take them once typed in.
-6. Quasi-random numbers (Sobol with a Brownian bridge) and a GPU run.
+6. Quasi-random numbers (Sobol with a Brownian bridge). B4 used a Gaussian
+   control variate instead, which removes most of the noise that matters.
 
 ## Choices the paper leaves open
 
@@ -274,6 +275,11 @@ clarify them:
   random numbers.
 
 ## Quick start
+
+On a GPU, install a CUDA jaxlib (`pip install "jax[cuda13]"`); the same code
+runs unchanged and reproduces the CPU results digit for digit, 10-27x faster
+on a million paths (C6). On a machine whose GPU shares host memory, set
+`XLA_PYTHON_CLIENT_PREALLOCATE=false`.
 
 Monte-Carlo pricing can use every CPU core: start Python with
 `XLA_FLAGS=--xla_force_host_platform_device_count=16` (or your core count)
