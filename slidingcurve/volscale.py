@@ -41,3 +41,12 @@ def piecewise_constant(expiries, values, t):
     idx = jnp.clip(jnp.searchsorted(Tm, jnp.asarray(t, dtype=float), side="left"),
                    0, Tm.shape[0] - 1)
     return jnp.asarray(values)[idx]
+
+
+def bootstrap_fn(curve, model, expiries, weighted=False):
+    """Ybar_1 as a function of time, from the bootstrap at the model's kappa,
+    delta and sigma. The scaling depends on sigma, so rebuild it when sigma
+    moves materially."""
+    vals = ybar_bootstrap(curve, float(model.kappa), float(model.delta), float(model.sigma),
+                          expiries, weighted)
+    return lambda t: piecewise_constant(expiries, vals, t)

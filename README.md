@@ -18,36 +18,54 @@ implementation written from the paper; it is not the authors' code.
 | Linear Gaussian closed forms, Appendix D | `gaussian.py` | tested against eqs. (93), (94), (96) and D.5 |
 | One-factor quasi-Gaussian simulator in the physical measure, eq. (52) | `model.py` | Gaussian case matches closed forms |
 | Yield decomposition `Y = Y_eh + theta - gamma`, eqs. (12), (54), (55) | `decomposition.py` | closes within Monte-Carlo noise |
-| Volatility scaling: zeroth order and bootstrap, eqs. (79)-(81) | `volscale.py` | algebra tested; effect on smiles not yet |
-| Skew `b` and stochastic volatility `eta` in the simulator | `model.py` | **implemented, validated only by model-free identities** |
+| Volatility scaling: zeroth order and bootstrap, eqs. (79)-(81) | `volscale.py` | tested, including its effect on at-the-money volatility |
+| Payer swaption / caplet pricer in the expiry-forward measure | `pricing.py` | Gaussian case matches Jamshidian's exact price |
+| Normal and displaced-lognormal quote conventions | `bachelier.py` | tested |
+| Calibration of `sigma`, `b`, `eta` with an autodiff Jacobian | `calibration.py` | recovers known parameters; `eta` fit not validated |
+| Test market: Joshi's displaced-diffusion LMM | `markets.py` | curve reprices the forwards exactly |
+| Skew `b` and stochastic volatility `eta` | `model.py`, `pricing.py` | **validated by model-free identities only** |
 
-Measured on the illustrative curve in `examples/` (Section 9.1 baseline:
-`delta = 5`, `kappa = 0.03`, `sigma = 1%`, monthly steps, 65,536 paths):
+Measured (Section 9.1 baseline: `delta = 5`, `kappa = 0.03`, monthly steps
+for the decomposition, 24 steps a year for pricing):
 
-- Gaussian case: Monte Carlo and closed form agree to 0.01bp for `Y_eh`,
-  `theta` and `gamma` at every maturity from 1 to 40 years.
+- Gaussian decomposition: Monte Carlo and closed form agree to 0.01bp for
+  `Y_eh`, `theta` and `gamma` at every maturity from 1 to 40 years.
 - With skew and/or stochastic volatility on, the three independently estimated
-  terms sum to the market yield to within their standard error (under 1bp at
-  40 years).
+  terms sum to the market yield to within their standard error.
+- Gaussian swaption prices agree with the exact price to within Monte-Carlo
+  error (about 0.05bp of normal volatility at 65,536 paths).
+- Volatility scaling, 20y caplet on the 5y rate: moving `b` from 0 to 1 moves
+  at-the-money volatility by about 10% with forward centring and by under 4%
+  with the unweighted bootstrap. The bootstrap is the calibration default.
 
 ![Gaussian decomposition](docs/gaussian_decomposition.png)
 
+### End to end on a published test market
+
+`examples/joshi_calibration.py` runs the Section 9.4 workflow on Mark Joshi's
+displaced-diffusion LMM example (the kooderive set-up), with the 10y x 5y
+swaption at five strikes. Fitting `sigma` and `b` matches all five normal
+volatilities to under 0.1bp (`sigma = 1.79%`, `b = 0.52`).
+
+![Calibration on Joshi's market](docs/joshi_calibration.png)
+
+This is **not** the paper's data. The market is a model with a pure
+displaced-diffusion skew, its curve runs from 0.8% to 8.8% and stops at 20.5
+years, and swaption quotes come from the frozen-weights approximation. It
+exercises the machinery; it does not reproduce Figures 10-13.
+
 ## Not done yet
 
-Nothing below exists, so **no figure of the paper beyond the Gaussian
-decomposition can be reproduced yet**:
-
-1. **Swaption/caplet pricer in the risk-neutral measure** and normal implied
-   volatilities (Figures 4, 8, 11). Without it there is no way to check that
-   the volatility scaling holds at-the-money volatility fixed across `b`, so
-   the skew sweep in the example is labelled uncalibrated.
-2. **Calibration** of `sigma`, `b`, `eta` (Sections 9.3-9.4). `jax.grad`
-   through the pricer is the intended route.
-3. **Paper inputs.** The synthetic curve is given only as a plot, and the
-   21-Aug-2026 USD swap curve and five 20y x 5y smile quotes are not tabulated.
-   `Curve.from_zero_nodes` is the hook for them once available.
-4. **Market-curve bootstrap** from swap quotes (the spline constructor takes
-   zero yields someone else has bootstrapped).
+1. **Paper inputs.** The synthetic curve is given only as a plot, and the
+   21-Aug-2026 USD swap curve and five 20y x 5y smile quotes are not
+   tabulated. Until then Figures 2-13 can be matched in shape, not in level.
+2. **A market with smile curvature.** Joshi's has none, so the `eta` fit is
+   exercised but not meaningfully tested. Tables from Brigo and Mercurio could
+   not be verified from a primary source and are not included;
+   `markets.Quotes` and `Curve.from_zero_nodes` take them once typed in.
+3. **Stochastic-volatility sweep at fixed at-the-money volatility** (Figures
+   7-9) and the paper's figure scripts in general.
+4. **Market-curve bootstrap** from swap quotes.
 5. **Short-rate density** under P (Figure 13).
 6. **Multi-factor model** (`d > 1`), the Ho-Lee checks of Appendix E, and the
    forward-rate decomposition of Appendix F.
@@ -58,20 +76,23 @@ decomposition can be reproduced yet**:
 These are assumptions of this implementation, to be revisited if the authors
 clarify them:
 
-- **Time stepping.** Monthly by default. `y` is advanced exactly for frozen
+- **Time stepping.** Monthly for the decomposition, 24 steps a year for pricing. `y` is advanced exactly for frozen
   volatility, and the drift of `x` is the increment that keeps the benchmark
   yield an exact discrete martingale; only the diffusion is Euler.
 - **Variance process.** Full-truncation Euler.
 - **Volatility cap** (Remark 8). Applied to `sigma_r` at 10x `sigma`; the
   local volatility is floored at zero.
-- **Bootstrap grid** `T_m` for the volatility scaling is a user input.
+- **Bootstrap grid** `T_m` for the volatility scaling: annual by default.
+- **Calibration objective.** Price errors divided by normal vega, on fixed
+  random numbers.
 
 ## Quick start
 
 ```bash
 pip install -e ".[dev]"
-pytest                                   # 28 tests, about a minute on CPU
+pytest                                   # 41 tests, about a minute on CPU
 python examples/gaussian_decomposition.py
+python examples/joshi_calibration.py
 ```
 
 ```python

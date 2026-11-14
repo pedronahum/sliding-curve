@@ -50,6 +50,16 @@ class Model(NamedTuple):
     vol_cap: float = 10.0   # cap on sigma_r, in multiples of sigma (Remark 8)
 
 
+def local_vol(model: Model, y1, ybar, z):
+    """Short-rate volatility sigma_r: affine local volatility in the benchmark
+    yield times sqrt(z), floored at zero (the affine local vol is absorbed
+    where it vanishes) and capped at vol_cap * sigma (Remark 8). Shared by the
+    physical-measure simulator and the pricing simulator."""
+    zp = jnp.maximum(z, 1e-12)          # keeps d sqrt / dz finite for autodiff
+    lv = model.sigma * ((1.0 - model.b) + model.b * y1 / ybar)
+    return jnp.clip(jnp.sqrt(zp) * lv, 0.0, model.vol_cap * model.sigma)
+
+
 class Profiles(NamedTuple):
     """Path means on the time grid, one row per independent batch: [K, N+1]."""
     t: jax.Array
@@ -92,9 +102,7 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
         i, f0, f0d, y0, dy0, yb = inp
         zp = jnp.maximum(z, 0.0)                              # full truncation
         y1 = y0 + Ad * x + c_y * y
-        # Floor at zero: the affine local vol is absorbed where it vanishes.
-        vol = jnp.clip(jnp.sqrt(zp) * sigma * ((1.0 - model.b) + model.b * y1 / yb),
-                       0.0, model.vol_cap * sigma)
+        vol = local_vol(model, y1, yb, z)
         var = vol**2
         rho = (f0d + ekd * (x + y * Bd) - f0 - x) / delta
         mu_y = rho + var * c_y

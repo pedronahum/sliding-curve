@@ -68,3 +68,25 @@ def term_premium(curve, kappa, delta, sigma, T):
     """theta(T) = Y(0, T) + gamma(T) - Y_eh(T), eq. (95)."""
     return (curve.zero(T) + convexity(kappa, sigma, T)
             - yield_eh(curve, kappa, delta, sigma, T))
+
+
+def payer_swaption(curve, kappa, sigma, expiry, pay_times, accruals, strike):
+    """Exact payer swaption price in the Gaussian model (Jamshidian's
+    decomposition into zero-coupon bond puts). Host-side; the oracle for the
+    Monte-Carlo pricer."""
+    from scipy.optimize import brentq
+    from scipy.stats import norm
+
+    Tn = np.asarray(pay_times, dtype=float)
+    c = strike * np.asarray(accruals, dtype=float)
+    c[-1] += 1.0
+    g = np.asarray(B(kappa, Tn - expiry))
+    y = float(y_det(kappa, sigma, expiry))
+    p0T = float(curve.discount(expiry))
+    p0 = np.asarray(curve.discount(jnp.asarray(Tn)))
+    bonds = lambda x: p0 / p0T * np.exp(-g * x - 0.5 * g * g * y)
+    x_star = brentq(lambda x: np.sum(c * bonds(x)) - 1.0, -1.0, 1.0, xtol=1e-15)
+    k = bonds(x_star)
+    sp = sigma * g * np.sqrt(float(B(2.0 * kappa, expiry)))    # stdev of log P(T, T_i)
+    d1 = np.log(p0 / (k * p0T)) / sp + 0.5 * sp
+    return float(np.sum(c * (k * p0T * norm.cdf(-(d1 - sp)) - p0 * norm.cdf(-d1))))

@@ -14,7 +14,8 @@ jax.config.update("jax_enable_x64", True)
 from .curve import Curve                                    # noqa: E402
 from .model import Model, Profiles, simulate, time_grid     # noqa: E402
 from .decomposition import Decomposition, decompose         # noqa: E402
-from . import gaussian, volscale                            # noqa: E402
+from . import gaussian, volscale, bachelier, pricing, markets, calibration  # noqa: E402
 
 __all__ = ["Curve", "Model", "Profiles", "simulate", "time_grid",
-           "Decomposition", "decompose", "gaussian", "volscale"]
+           "Decomposition", "decompose", "gaussian", "volscale", "bachelier",
+           "pricing", "markets", "calibration"]
