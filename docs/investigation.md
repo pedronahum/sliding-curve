@@ -21,6 +21,7 @@ paper are accurate to about 0.3bp (checked below).
 | ID | Issue | Status |
 |---|---|---|
 | A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
+| A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
 
 ---
 
@@ -120,3 +121,22 @@ closed form for either reference; only the continuous yield gives 1.1572%;
 the paper's stated skew parameters reproduce its Figure 11 fit with
 mean-referenced strikes and miss with forward-referenced ones; 1.12% misses
 by 3-5bp.
+
+---
+
+## A10. Two values of sigma for the skew fit
+
+**Status: paper inconsistency, confirmed.** The text of Section 9.4 says
+the skew fit gives `sigma = 1.12%`; the caption of Figure 13 says 1.1999%.
+At `b = 0.367` (`experiments/a6_skew_fit.py`, `a10_text_sigma.py`):
+
+| sigma | Figure 11: model minus paper's fitted vols | gamma(30y), paper 140.3 |
+|---|---|---|
+| 1.1999% | -0.4 to +0.7 (mean strikes) | 140.5 +- 0.2 |
+| 1.12% | -4.5 to -5.3 (mean strikes); -3.0 to -3.9 (forward strikes) | 115.6 +- 0.2 |
+
+1.12% does not reproduce Figure 11 under either strike reading, nor Figure
+12. It is not the skew-fit sigma of any of the instrument readings in A9
+either (the annual par swap would need 1.10% at `b = 0`). The test
+`test_papers_skew_parameters_reproduce_its_figure_11_fit_with_mean_referenced_strikes`
+checks both values.

@@ -118,7 +118,10 @@ Three things to know:
 
 - **The paper states two values of `sigma` for the skew fit**: 1.12% in the
   text of Section 9.4 and 1.1999% in the caption of Figure 13. Only 1.1999%
-  reproduces Figure 12 and the fitted smile of Figure 11.
+  reproduces Figure 12 (`gamma(30y)` 140.5 against 140.3bp; 1.12% gives
+  115.6) and the paper's fitted smile of Figure 11 (to 0.7bp; 1.12% misses by
+  3-5bp under any reading of the option). The text's value is a typo or a
+  leftover (A10).
 - **The "yield option" is not defined in the paper.** Its numbers pin it
   down (`docs/investigation.md`, A9): the underlying is the continuously
   compounded forward yield (the only one that gives `sigma = 1.1572%`), paid

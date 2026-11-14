@@ -88,7 +88,7 @@ def test_market_decomposition_figure_10():
 def test_market_decomposition_with_skew_figure_12():
     """At the parameters in the caption of Figure 13 (sigma = 1.1999%,
     b = 0.367). The 1.12% printed in the text of Section 9.4 does not
-    reproduce the figure: it would put gamma(30y) near 122bp, not 140bp."""
+    reproduce the figure: it gives gamma(30y) = 115.6bp, not 140bp."""
     d = run_market(BASE._replace(sigma=0.011999, b=0.367), n_paths=2**15)
     ref = markets.paper_figures()["fig12"]
     np.testing.assert_allclose(1e4 * np.asarray(d.gamma), [ref["gamma"][i] for i in MKT_IDX],
