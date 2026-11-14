@@ -30,8 +30,10 @@ implementation written from the paper; it is not the authors' code.
 Measured (Section 9.1 baseline: `delta = 5`, `kappa = 0.03`, monthly steps
 for the decomposition, 24 steps a year for pricing):
 
-- Gaussian decomposition: Monte Carlo and closed form agree to 0.01bp for
-  `Y_eh`, `theta` and `gamma` at every maturity from 1 to 40 years.
+- Gaussian decomposition on the paper's baseline curve: Monte Carlo and
+  closed form agree to 0.002bp, and the closed forms reproduce all four
+  series of Figure 2 to 0.24bp (digitisation error) at every maturity from
+  1 to 40 years.
 - With skew and/or stochastic volatility on, the three independently estimated
   terms sum to the market yield to within their standard error.
 - Gaussian swaption prices agree with the exact price to within Monte-Carlo

@@ -24,8 +24,12 @@ COLOURS = {"black": (0, 0, 0), "royalblue": (65, 105, 225), "seagreen": (46, 139
 
 # file suffix -> (y tick values on the left axis, {series name: colour})
 FIGURES = {
-    "002": ("fig2", np.arange(300, 476, 25), {"Y": "black", "Y_eh": "royalblue"}),
-    "008": ("fig5", np.arange(300, 551, 50), {"Y": "black", "Y_eh": "royalblue"}),
+    # Figures 2 and 5: theta and gamma are on a right axis with the left
+    # axis' scale, offset so that gamma(0) = 0 (subtracted below)
+    "002": ("fig2", np.arange(300, 476, 25), {"Y": "black", "Y_eh": "royalblue",
+                                               "theta": "tomato", "gamma": "seagreen"}),
+    "008": ("fig5", np.arange(300, 551, 50), {"Y": "black", "Y_eh": "royalblue",
+                                               "theta": "tomato", "gamma": "seagreen"}),
     "004": ("fig3", np.arange(0, 301, 50), {"b=0.00": "black", "b=0.25": "royalblue",
             "b=0.50": "seagreen", "b=0.75": "goldenrod", "b=1.00": "tomato"}),
     "010": ("fig6", np.arange(0, 176, 25), {"b=0.00": "black", "b=0.25": "royalblue",
@@ -246,6 +250,10 @@ def main(src, dst):
             if np.isnan(vals[-1]) and not np.isnan(vals[-3:-1]).any():
                 vals[-1] = 2 * vals[-2] - vals[-3]      # the line ends under the right spine
             out[name][label] = [None if np.isnan(x) else round(float(x), 2) for x in vals]
+        if "gamma" in series:                                    # right-axis offset: gamma(0.25y) ~ 0.01bp
+            off = out[name]["gamma"][0]
+            for label in ("theta", "gamma"):
+                out[name][label] = [None if x is None else round(x - off, 2) for x in out[name][label]]
     for suffix, name in MARKET_FIGURES.items():
         out[name] = market_figure(np.asarray(Image.open(src / f"f-{suffix}.png").convert("RGB")))
     out["fig11"] = smile_figure(np.asarray(Image.open(src / "f-020.png").convert("RGB")))

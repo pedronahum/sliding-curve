@@ -76,6 +76,22 @@ def main(src, dst):
     fig.tight_layout()
     fig.savefig(dst / "overlay_fig8.png", dpi=110)
 
+    # Figures 2 and 5: Y and Y_eh on the left axis; theta and gamma on the
+    # right axis, whose zero is at 300bp on the left one
+    for name, suffix, ticks in (("fig2", "002", np.arange(300, 476, 25)), ("fig5", "008", np.arange(300, 551, 50))):
+        img = np.asarray(Image.open(src / f"f-{suffix}.png").convert("RGB"))
+        px, py = axis_maps(img, None, ticks, x_limits=(0.0, 40.0))
+        d = figs[name]
+        t = np.asarray(d["T"])
+        sel = slice(7, None, 8)
+        series = {k: np.asarray(d[k], dtype=object)[sel].tolist() for k in ("Y", "Y_eh")}
+        series.update({k: [None if v is None else v + 300.0 for v in np.asarray(d[k], dtype=object)[sel]]
+                       for k in ("theta", "gamma")})
+        fig, ax = plt.subplots(figsize=(9, 6))
+        overlay(ax, img, px, py, t[sel], series, f"{name}: digitised points")
+        fig.tight_layout()
+        fig.savefig(dst / f"overlay_{name}.png", dpi=110)
+
     # Figures 3, 6, 7, 9 (maturity on the x axis, frame = 0..40y)
     for name, suffix, ticks in (("fig3", "004", np.arange(0, 301, 50)), ("fig6", "010", np.arange(0, 176, 25)),
                                 ("fig7", "012", np.arange(0, 121, 20)), ("fig9", "016", np.arange(0, 201, 50))):

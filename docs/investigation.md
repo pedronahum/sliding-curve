@@ -658,3 +658,36 @@ amounts of this order. The paper's high-skew convexities are therefore
 partly properties of the cap; that the shortfall is 1.7-2.6% and grows with
 b is consistent with that, but we cannot pin it down further without the
 definition.
+
+---
+
+## B3. The Gaussian decomposition example
+
+**Status: fixed.** `examples/gaussian_decomposition.py` now uses the paper's
+baseline curve (`markets.paper_curve("baseline")`) instead of an
+illustrative Nelson-Siegel curve and compares Monte Carlo, the Appendix D
+closed forms and Figure 2. The uncalibrated zeroth-order skew sweep it used
+to carry is dropped (`examples/skew_sweep.py` supersedes it).
+
+Figure 2 plots theta and gamma on a right axis that the digitiser did not
+read; `tools/digitise_figures.py` now reads them for Figures 2 and 5 (same
+scale as the left axis, offset so that gamma(0) = 0), and the overlay check
+confirms every point ([Figure 2](investigation/overlay_fig2.png),
+[Figure 5](investigation/overlay_fig5.png)). Only the new series were added
+to the data file: re-running the digitiser in this environment changes 13
+existing values by 0.01bp (numpy rounding), and they were left as they were
+so that no committed result moves.
+
+| T | Y_eh: this code / Figure 2 | theta | gamma |
+|---|---|---|---|
+| 1 | 299.11 / 299.35 | 6.97 / 7.01 | 0.16 / 0.16 |
+| 5 | 299.58 / 299.50 | 33.42 / 33.40 | 3.73 / 3.72 |
+| 10 | 300.33 / 300.30 | 62.23 / 62.20 | 13.39 / 13.40 |
+| 20 | 300.62 / 300.61 | 113.73 / 113.75 | 43.54 / 43.60 |
+| 30 | 302.63 / 302.67 | 150.93 / 150.95 | 80.55 / 80.56 |
+| 40 | 304.94 / 304.80 | 176.30 / 176.41 | 119.00 / 119.08 |
+
+Monte Carlo against closed form: 0.002bp at most. Closed form against the
+figure: 0.24 (Y_eh), 0.12 (theta), 0.08bp (gamma) at most, i.e.
+digitisation error. `tests/test_figure_2.py` checks the closed forms against
+all four series of Figures 2 and 5 to 0.5bp.
