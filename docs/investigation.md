@@ -565,6 +565,57 @@ Both stop on the same valley (A7), with errors within 0.1bp of each other.
 
 ---
 
+## B4. Monte-Carlo noise: variance reduction
+
+**Status: fixed.** `yield_option_prices(..., control_variate=True)` (and
+`calibrate_yield_smile(..., control_variate=True)`) subtracts the same option
+on a Gaussian twin driven by the same random numbers (b = 0, eta = 0, same
+sigma), priced exactly for the discrete scheme (its mean and variance are a
+linear Gaussian recursion carried in the same scan), with the regression
+coefficient estimated per strike. Quasi-random numbers with a Brownian
+bridge were the other option; the control variate was chosen because the
+paper's own calibration instrument is close to Gaussian, so the twin
+removes most of the noise, and it needs no new dependency (kooderive's
+Sobol tables are GPL).
+
+`experiments/b4_control_variate.py`:
+
+*sigma for an 82bp at-the-money vol* (8 seeds; exact for the continuous
+model 1.15721%):
+
+| paths | plain | control variate |
+|---|---|---|
+| 32,768 | 1.15595 +- 0.00981% (1.1400-1.1743) | 1.15715 +- 0.00000% |
+| 65,536 | 1.15646 +- 0.00531% (1.1501-1.1633) | 1.15715 +- 0.00000% |
+
+In the Gaussian case the estimator has zero variance: every seed gives the
+discrete scheme's exact value (1.15715%, 0.005% below the continuous one at
+24 steps a year). The README's 1.161% / 1.157% difference was this noise.
+
+*Standard-error ratio* (plain / control variate), 20y option at -200, 0,
++200bp from the mean:
+
+| | eta = 0 | eta = 0.5 |
+|---|---|---|
+| b = 0 | ~1e5 (exact) | 1.2-1.5 |
+| b = 0.367 (the market fit) | 3.7-5.3 (variance / 14-28) | 1.4-1.5 |
+| b = 1 | 1.8-2.3 | 1.4-1.5 |
+
+*Skew fit* (6 seeds, 32,768 paths, annual bootstrap grid as before A2): sigma 1.1888 +- 0.0036% (plain:
++- 0.0095%), gamma(30y) 135.0 +- 1.5bp (plain: +- 2.7), b 0.3521 +- 0.0079
+(plain: +- 0.0060). The twin has no skew, so it removes the level noise but
+not the slope noise that b responds to: b is no better determined. With
+stochastic volatility the twin does not see z and helps little; a
+conditional (Rao-Blackwell) estimator given the variance path would, and is
+the next step if eta matters.
+
+`tests/test_control_variate.py` checks that the estimator is exact in the
+Gaussian case for both strike references, unbiased against the plain
+estimator with skew and stochastic volatility, and that it reduces the
+standard error at the market skew.
+
+---
+
 ## A2. Convexity at high skew (Figures 3 and 6)
 
 **Status: partly fixed (the bootstrap grid was not converged); the remaining

@@ -1,0 +1,20 @@
+1. sigma for 82bp ATM, b = 0 (exact: 1.15721%)
+    32768 paths, control variate False: sigma 1.15595% +- 0.00981%  (range 1.1400-1.1743%)
+    32768 paths, control variate True : sigma 1.15715% +- 0.00000%  (range 1.1572-1.1572%)
+    65536 paths, control variate False: sigma 1.15646% +- 0.00531%  (range 1.1501-1.1633%)
+    65536 paths, control variate True : sigma 1.15715% +- 0.00000%  (range 1.1572-1.1572%)
+2. skew fit, 32,768 paths, control variate
+   seed 0: sigma 1.1896% b 0.3536 gamma(30y) 135.4
+   seed 1: sigma 1.1935% b 0.3445 gamma(30y) 135.6
+   seed 2: sigma 1.1827% b 0.3471 gamma(30y) 132.4
+   seed 3: sigma 1.1906% b 0.3656 gamma(30y) 137.1
+   seed 4: sigma 1.1879% b 0.3557 gamma(30y) 135.1
+   seed 5: sigma 1.1887% b 0.3463 gamma(30y) 134.3
+   sigma 1.1888 +- 0.0036%  b 0.3521 +- 0.0079  gamma(30y) 135.0 +- 1.5  (plain, A6: +- 0.0095%, 0.0060, 2.7)
+3. s.e. ratio plain / control variate, 20y option at mean -200, 0, +200bp
+   b 0.000 eta 0.0: [ 83243.  129415.5 121789. ]  (variance reduction [6.92939258e+09 1.67483597e+10 1.48325712e+10])
+   b 0.000 eta 0.5: [1.2 1.5 1.5]  (variance reduction [1. 2. 2.])
+   b 0.367 eta 0.0: [5.3 4.  3.7]  (variance reduction [28. 16. 14.])
+   b 0.367 eta 0.5: [1.4 1.5 1.5]  (variance reduction [2. 2. 2.])
+   b 1.000 eta 0.0: [2.3 1.9 1.8]  (variance reduction [5. 3. 3.])
+   b 1.000 eta 0.5: [1.5 1.4 1.4]  (variance reduction [2. 2. 2.])

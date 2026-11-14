@@ -38,6 +38,10 @@ for the decomposition, 24 steps a year for pricing):
   terms sum to the market yield to within their standard error.
 - Gaussian swaption prices agree with the exact price to within Monte-Carlo
   error (about 0.05bp of normal volatility at 65,536 paths).
+- Yield options can be priced with a Gaussian-twin control variate
+  (`control_variate=True`): exact in the Gaussian case, so `sigma` for the
+  82bp at-the-money vol is 1.1572% at any seed and path count (plain: +-0.01%
+  at 32,768 paths), and variance cut 14-28x at the market skew (B4).
 - Volatility scaling, 20y caplet on the 5y rate: moving `b` from 0 to 1 moves
   at-the-money volatility by about 10% with forward centring and by under 4%
   with the unweighted bootstrap. The bootstrap is the calibration default.

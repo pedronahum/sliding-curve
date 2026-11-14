@@ -34,8 +34,9 @@ def main():
     start = Model(kappa=0.03, delta=5.0, sigma=0.01)
     kw = dict(n_paths=args.paths)
 
+    # b = 0: the Gaussian-twin control variate makes this estimate exact (B4)
     atm = calibration.calibrate_yield_smile(start, curve, EXPIRY, offsets[2:3], market[2:3],
-                                            free=("sigma",), **kw)
+                                            free=("sigma",), control_variate=True, **kw)
     # the paper's fit matches the at-the-money quote exactly: pin it with a large weight
     skew = calibration.calibrate_yield_smile(start, curve, EXPIRY, offsets, market,
                                              free=("sigma", "b"), weights=[1, 1, 30, 1, 1], **kw)

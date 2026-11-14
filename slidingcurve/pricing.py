@@ -55,13 +55,21 @@ def bond(curve, kappa, T, M, x, y):
 
 
 def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
-                      steps_per_year=24, measure_maturity=None):
+                      steps_per_year=24, measure_maturity=None, gaussian_twin=False):
     """State (x, y) at `expiry` under the forward measure of `measure_maturity`
     (the expiry itself by default).
 
     ybar_fn(t) is the volatility scaling Ybar_1 on an array of times. Paths
     come in antithetic pairs: path i and path i + n_paths/2.
+
+    With gaussian_twin=True also returns (x_g, y_g, mean_g, var_g): the state
+    of the b = 0, eta = 0 model with the same sigma, driven by the same
+    normals, and the exact mean and variance of x_g under this discrete
+    scheme (a linear Gaussian recursion), for use as a control variate.
     """
+    if gaussian_twin:
+        return _simulate_terminal_twin(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
+                                       measure_maturity)
     kappa, delta = model.kappa, model.delta
     n = max(int(round(expiry * steps_per_year)), 1)
     dt = expiry / n
@@ -92,6 +100,42 @@ def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
     return x, y
 
 
+def _simulate_terminal_twin(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
+                            measure_maturity):
+    """simulate_terminal plus the Gaussian twin; same random numbers."""
+    kappa, delta, sig = model.kappa, model.delta, model.sigma
+    n = max(int(round(expiry * steps_per_year)), 1)
+    dt = expiry / n
+    t = jnp.arange(n) * dt
+    Bd, Ad = B(kappa, delta), A(kappa, delta)
+    c_y = Bd**2 / (2.0 * delta)
+    e1, b1 = jnp.exp(-kappa * dt), B(kappa, dt)
+    e2, b2 = jnp.exp(-2.0 * kappa * dt), B(2.0 * kappa, dt)
+    half = n_paths // 2
+    tau = expiry if measure_maturity is None else measure_maturity
+    xs = (jnp.arange(n), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, tau - t))
+
+    def step(state, inp):
+        x, y, z, xg, yg, mg, vg = state
+        i, y0, yb, g = inp
+        vol = local_vol(model, y0 + Ad * x + c_y * y, yb, z)
+        var = vol**2
+        xi = jax.random.normal(jax.random.fold_in(key, i), (2, half))
+        xi = jnp.concatenate([xi, -xi], axis=1)
+        x_new = x * e1 + (y - var * g) * b1 + vol * jnp.sqrt(b2) * xi[0]
+        y_new = y * e2 + var * b2
+        z_new = variance_step(model, z, xi[1], dt)
+        xg_new = xg * e1 + (yg - sig**2 * g) * b1 + sig * jnp.sqrt(b2) * xi[0]
+        mg_new = mg * e1 + (yg - sig**2 * g) * b1
+        vg_new = vg * e1**2 + sig**2 * b2
+        return (x_new, y_new, z_new, xg_new, yg * e2 + sig**2 * b2, mg_new, vg_new), None
+
+    zero = jnp.zeros(2 * half)
+    init = (zero, zero, jnp.ones(2 * half), zero, jnp.zeros(()), jnp.zeros(()), jnp.zeros(()))
+    (x, y, _, xg, yg, mg, vg), _ = jax.lax.scan(step, init, xs)
+    return x, y, (xg, yg, mg, vg)
+
+
 def payer_payoffs(model, curve, swp: Swaption, strikes, x, y):
     """Undiscounted payoff at expiry per strike and path: [n_strikes, n_paths]."""
     p = bond(curve, model.kappa, swp.expiry, swp.pay_times[:, None], x[None, :], y[None, :])
@@ -112,7 +156,8 @@ def swaption_prices(model: Model, curve, swp: Swaption, strikes, ybar_fn, key,
 
 
 def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
-                        n_paths=2**15, steps_per_year=24, strike_reference="mean"):
+                        n_paths=2**15, steps_per_year=24, strike_reference="mean",
+                        control_variate=False):
     """Options on the benchmark yield Y_1(T) = Y(T, T, T + delta) itself: the
     paper's "yield option" (Figures 4, 8 and 11).
 
@@ -138,12 +183,19 @@ def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
     Returns (mean yield, undiscounted call prices per offset, standard errors).
     Prices are E[(Y_1 - K)^+]; invert them with forward = mean and strike
     K = reference + offset (see yield_option_moneyness).
+
+    control_variate=True subtracts the same option on the Gaussian twin
+    (b = 0, eta = 0, same sigma and random numbers; see simulate_terminal)
+    priced exactly, with the regression coefficient estimated per strike.
+    The twin's strike sits at the same offset from its own reference, so
+    in the Gaussian case the estimator has zero variance.
     """
     kappa, delta = model.kappa, model.delta
     Ad, cy = A(kappa, delta), B(kappa, delta) ** 2 / (2.0 * delta)
     fwd = curve.fwd_yield(expiry, expiry + delta)
-    x, y = simulate_terminal(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
-                             measure_maturity=expiry + delta)
+    sim = simulate_terminal(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
+                            measure_maturity=expiry + delta, gaussian_twin=control_variate)
+    x, y = sim[0], sim[1]
     y1 = fwd + Ad * x + cy * y
     mean = jnp.mean(y1)
     off = jnp.asarray(offsets)[:, None]
@@ -151,7 +203,24 @@ def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
     pay = jnp.maximum(y1[None, :] - ref - off, 0.0)
     half = pay.shape[1] // 2
     pairs = 0.5 * (pay[:, :half] + pay[:, half:])
+    if control_variate:
+        xg, yg, mg, vg = sim[2]
+        yg1 = fwd + Ad * xg + cy * yg
+        mu_g, sd_g = fwd + Ad * mg + cy * yg, Ad * jnp.sqrt(vg)        # exact for the discrete scheme
+        ref_g = jnp.mean(yg1) if strike_reference == "mean" else fwd
+        k_g = ref_g + off[:, 0]
+        exact_g = _bachelier_call(mu_g, k_g, sd_g)
+        pay_g = jnp.maximum(yg1[None, :] - ref_g - off, 0.0)
+        pg = 0.5 * (pay_g[:, :half] + pay_g[:, half:])
+        dp, dg = pairs - pairs.mean(1, keepdims=True), pg - pg.mean(1, keepdims=True)
+        beta = jnp.sum(dp * dg, 1) / jnp.maximum(jnp.sum(dg * dg, 1), 1e-300)
+        pairs = pairs - beta[:, None] * (pg - exact_g[:, None])
     return mean, jnp.mean(pairs, axis=1), jnp.std(pairs, axis=1, ddof=1) / jnp.sqrt(half)
+
+
+def _bachelier_call(mean, strike, sd):
+    d = (mean - strike) / sd
+    return (mean - strike) * jax.scipy.stats.norm.cdf(d) + sd * jax.scipy.stats.norm.pdf(d)
 
 
 def yield_option_moneyness(curve, model, expiry, offsets, mean, strike_reference="mean"):

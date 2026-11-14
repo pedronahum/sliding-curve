@@ -51,11 +51,13 @@ def _solve(model, free, resid_fn):
 
 def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sigma", "b"),
                           weights=None, key=None, n_paths=2**15, steps_per_year=24,
-                          bootstrap_expiries=None, strike_reference="mean") -> Fit:
+                          bootstrap_expiries=None, strike_reference="mean",
+                          control_variate=False) -> Fit:
     """Fit to normal vols of options on the benchmark yield (see
     pricing.yield_option_prices), quoted at strike offsets from at-the-money.
     `weights` scales the residuals, e.g. a large weight on the at-the-money
-    quote pins it. The volatility scaling is the unweighted bootstrap, rebuilt
+    quote pins it. control_variate=True prices with the Gaussian-twin control
+    variate (pricing.yield_option_prices). The volatility scaling is the unweighted bootstrap, rebuilt
     from the trial sigma inside the objective, on a monthly expiry grid
     (volscale.bootstrap_grid).
 
@@ -73,7 +75,8 @@ def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sig
 
     def priced(m):
         mean, p, se = yield_option_prices(m, curve, expiry, offsets, volscale.bootstrap_fn(curve, m, grid),
-                                          key, n_paths, steps_per_year, strike_reference)
+                                          key, n_paths, steps_per_year, strike_reference,
+                                          control_variate)
         k = yield_option_moneyness(curve, m, expiry, offsets, mean, strike_reference)
         # market prices at the same moneyness: quotes are vols at reference + offset
         return p, se, k, bl.normal_price(0.0, k, vj, expiry), bl.normal_vega(0.0, k, vj, expiry)
