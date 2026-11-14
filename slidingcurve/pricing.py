@@ -55,8 +55,9 @@ def bond(curve, kappa, T, M, x, y):
 
 
 def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
-                      steps_per_year=24):
-    """State (x, y) at `expiry` under the expiry-forward measure.
+                      steps_per_year=24, measure_maturity=None):
+    """State (x, y) at `expiry` under the forward measure of `measure_maturity`
+    (the expiry itself by default).
 
     ybar_fn(t) is the volatility scaling Ybar_1 on an array of times. Paths
     come in antithetic pairs: path i and path i + n_paths/2.
@@ -70,7 +71,8 @@ def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
     e1, b1 = jnp.exp(-kappa * dt), B(kappa, dt)
     e2, b2 = jnp.exp(-2.0 * kappa * dt), B(2.0 * kappa, dt)
     half = n_paths // 2
-    xs = (jnp.arange(n), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, expiry - t))
+    tau = expiry if measure_maturity is None else measure_maturity
+    xs = (jnp.arange(n), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, tau - t))
 
     def step(state, inp):
         x, y, z = state
@@ -107,3 +109,30 @@ def swaption_prices(model: Model, curve, swp: Swaption, strikes, ybar_fn, key,
     pairs = 0.5 * (pay[:, :half] + pay[:, half:])             # antithetic pairs
     df = curve.discount(swp.expiry)
     return df * jnp.mean(pairs, axis=1), df * jnp.std(pairs, axis=1, ddof=1) / jnp.sqrt(half)
+
+
+def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
+                        n_paths=2**15, steps_per_year=24):
+    """Options on the benchmark yield Y_1(T) = Y(T, T, T + delta) itself: the
+    paper's "yield option" (Figures 4 and 11).
+
+    The paper does not define the contract. The reading used here is the one
+    that reproduces its quoted sigma = 1.157% for an 82bp at-the-money vol:
+    the yield is simulated in the (T + delta)-forward measure, the measure of
+    the calibration caplets and of the volatility-scaling bootstrap, and
+    strikes are offsets from the model's own mean of the yield in that
+    measure. In the Gaussian case the implied normal volatility is then flat
+    and equal to A(delta) sigma sqrt(B_{2 kappa}(T) / T).
+
+    Returns (mean yield, undiscounted call prices per offset, standard errors).
+    """
+    kappa, delta = model.kappa, model.delta
+    x, y = simulate_terminal(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
+                             measure_maturity=expiry + delta)
+    y1 = curve.fwd_yield(expiry, expiry + delta) + A(kappa, delta) * x \
+        + B(kappa, delta) ** 2 / (2.0 * delta) * y
+    mean = jnp.mean(y1)
+    pay = jnp.maximum(y1[None, :] - mean - jnp.asarray(offsets)[:, None], 0.0)
+    half = pay.shape[1] // 2
+    pairs = 0.5 * (pay[:, :half] + pay[:, half:])
+    return mean, jnp.mean(pairs, axis=1), jnp.std(pairs, axis=1, ddof=1) / jnp.sqrt(half)

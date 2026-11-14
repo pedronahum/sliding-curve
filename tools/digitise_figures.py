@@ -33,6 +33,14 @@ FIGURES = {
 }
 X_RANGE = (0.0, 40.0)
 
+# Section 9.4 decompositions: maturities 0-30y; theta and gamma are on a right
+# axis with the same scale as the left one, offset so that gamma(0) = 0.
+MARKET_FIGURES = {"018": "fig10", "022": "fig12"}
+MARKET_TICKS = np.arange(350, 651, 50)
+MARKET_SERIES = {"Y": "black", "Y_eh": "royalblue", "theta": "tomato", "gamma": "seagreen"}
+# Figure 11: the five smile quotes (black circles) and the paper's fit (red squares)
+SMILE_STRIKES = np.array([245.0, 395.0, 445.0, 495.0, 645.0])
+
 
 def frame(img):
     dark = img.sum(axis=2) < 330
@@ -71,6 +79,56 @@ def trace(img, colour, left, right, top, bottom, legend):
     return np.array(xs), np.array(ys)
 
 
+def grid_cols(img, left, right, top, bottom):
+    return grid_rows(np.transpose(img, (1, 0, 2)), top, bottom, left, right)
+
+
+def market_figure(img):
+    left, right, top, bottom = frame(img)
+    rows = grid_rows(img, left, right, top, bottom)
+    assert len(rows) == len(MARKET_TICKS) - 2, len(rows)         # 350 and 650 are the frame
+    slope, intercept = np.polyfit(rows[::-1], MARKET_TICKS[1:-1], 1)
+    grid_t = np.arange(0.25, 30.01, 0.25)
+    res = {"T": grid_t.tolist()}
+    for label, colour in MARKET_SERIES.items():
+        xs, ys = trace(img, colour, left, right, top, bottom, legend=(150, 160))
+        t = (xs - left) / (right - left) * 30.0
+        vals = np.interp(grid_t, t, slope * ys + intercept, left=np.nan, right=np.nan)
+        vals[[np.min(np.abs(t - g)) > 0.2 for g in grid_t]] = np.nan
+        if np.isnan(vals[-1]) and not np.isnan(vals[-3:-1]).any():
+            vals[-1] = 2 * vals[-2] - vals[-3]
+        res[label] = vals
+    offset = res["gamma"][0]                                     # gamma(0.25y) is ~0.01bp
+    for label in ("theta", "gamma"):
+        res[label] = res[label] - offset
+    return {k: v if k == "T" else [None if np.isnan(x) else round(float(x), 2) for x in v]
+            for k, v in res.items()}
+
+
+def smile_figure(img):
+    left, right, top, bottom = frame(img)
+    rows, cols = grid_rows(img, left, right, top, bottom), grid_cols(img, left, right, top, bottom)
+    ys, yi = np.polyfit(rows[::-1], np.arange(75, 96, 5), 1)
+    xs, xi = np.polyfit(cols, np.arange(250, 651, 50), 1)
+    res = {"strikes": SMILE_STRIKES.tolist()}
+    for label, colour in (("market", "black"), ("paper_fit", "tomato")):
+        dist = np.sqrt(((img.astype(float) - np.array(COLOURS[colour], dtype=float)) ** 2).sum(axis=2))
+        w = np.clip(1.0 - dist / 90.0, 0.0, None)
+        w[:top + 3] = 0; w[bottom - 2:] = 0; w[:top + 110, :left + 300] = 0
+        vals = []
+        for k in SMILE_STRIKES:
+            col = int(round((k - xi) / xs))
+            block = w[:, col - 1:col + 2].sum(axis=1)
+            vals.append(round(float(ys * (block * np.arange(len(block))).sum() / block.sum() + yi), 2)
+                        if block.sum() > 3 else None)
+        res[label] = vals
+    # where the fit's marker sits on top of the market marker the two coincide
+    # to within the reading error; the hidden one cannot be read on its own
+    res["market"] = [f if m is None or abs(m - f) < 0.4 else m
+                     for m, f in zip(res["market"], res["paper_fit"])]
+    return res
+
+
 def main(src, dst):
     src, dst = pathlib.Path(src), pathlib.Path(dst)
     dst.mkdir(parents=True, exist_ok=True)
@@ -95,14 +153,20 @@ def main(src, dst):
             if np.isnan(vals[-1]) and not np.isnan(vals[-3:-1]).any():
                 vals[-1] = 2 * vals[-2] - vals[-3]      # the line ends under the right spine
             out[name][label] = [None if np.isnan(x) else round(float(x), 2) for x in vals]
+    for suffix, name in MARKET_FIGURES.items():
+        out[name] = market_figure(np.asarray(Image.open(src / f"f-{suffix}.png").convert("RGB")))
+    out["fig11"] = smile_figure(np.asarray(Image.open(src / "f-020.png").convert("RGB")))
     (dst / "paper_figures_digitised.json").write_text(json.dumps(out))
     return out
 
 
 if __name__ == "__main__":
     out = main(*sys.argv[1:3])
+    print("fig11", out["fig11"])
     for name, d in out.items():
-        idx = [3, 19, 39, 79, 119, 159]
+        if name == "fig11":
+            continue
+        idx = [3, 19, 39, 79, 119, 159] if len(d["T"]) > 120 else [3, 19, 39, 79, 99, 119]
         print(name, "T =", [d["T"][i] for i in idx])
         for k, v in d.items():
             if k != "T":

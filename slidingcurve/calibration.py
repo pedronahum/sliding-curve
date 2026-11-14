@@ -31,6 +31,56 @@ class Fit(NamedTuple):
     success: bool
 
 
+def _solve(model, free, resid_fn):
+    """Bounded least squares on a deterministic residual function of the
+    free parameters (a jax function of a parameter vector)."""
+    resid = jax.jit(resid_fn)
+    jac = jax.jit(jax.jacfwd(resid_fn))
+    x0 = np.array([getattr(model, n) for n in free], dtype=float)
+    lo, hi = (np.array([_BOUNDS[n][k] for n in free]) for k in (0, 1))
+    # The variance scheme matches distributions, not paths, so its samples are
+    # not pathwise differentiable in eta: fall back to finite differences then.
+    ad = "eta" not in free
+    return least_squares(lambda th: np.asarray(resid(jnp.asarray(th))), x0,
+                         jac=(lambda th: np.asarray(jac(jnp.asarray(th)))) if ad else "2-point",
+                         diff_step=None if ad else 1e-2,
+                         bounds=(lo, hi), x_scale=[_SCALE[n] for n in free], xtol=1e-10)
+
+
+def calibrate_yield_smile(model: Model, curve, expiry, offsets, vols, free=("sigma", "b"),
+                          weights=None, key=None, n_paths=2**15, steps_per_year=24,
+                          passes=2, bootstrap_expiries=None) -> Fit:
+    """Fit to normal vols of options on the benchmark yield (see
+    pricing.yield_option_prices), quoted at strike offsets from at-the-money.
+    `weights` scales the residuals, e.g. a large weight on the at-the-money
+    quote pins it. The volatility scaling is the unweighted bootstrap, rebuilt
+    at the fitted sigma on each pass."""
+    from .pricing import yield_option_prices
+    key = jax.random.PRNGKey(0) if key is None else key
+    if "eta" in free and model.eta == 0.0:
+        model = model._replace(eta=0.3)
+    offsets, vols = np.asarray(offsets, dtype=float), np.asarray(vols, dtype=float)
+    w = jnp.ones(len(vols)) if weights is None else jnp.asarray(weights, dtype=float)
+    grid = np.arange(1.0, np.ceil(expiry) + 1.0) if bootstrap_expiries is None else bootstrap_expiries
+    target = bl.normal_price(0.0, jnp.asarray(offsets), jnp.asarray(vols), expiry)
+    vega = bl.normal_vega(0.0, jnp.asarray(offsets), jnp.asarray(vols), expiry)
+
+    for _ in range(passes):
+        ybar_fn = volscale.bootstrap_fn(curve, model, grid)
+
+        def price(theta, ybar_fn=ybar_fn):
+            m = model._replace(**{name: theta[i] for i, name in enumerate(free)})
+            return yield_option_prices(m, curve, expiry, offsets, ybar_fn, key, n_paths, steps_per_year)
+
+        sol = _solve(model, free, lambda th: 1e4 * w * (price(th)[1] - target) / vega)
+        model = model._replace(**{n: float(v) for n, v in zip(free, sol.x)})
+    _, p, se = yield_option_prices(model, curve, expiry, offsets,
+                                   volscale.bootstrap_fn(curve, model, grid), key, n_paths, steps_per_year)
+    model_vols = bl.implied_normal_vol(np.asarray(p), 0.0, offsets, expiry)
+    return Fit(model, 1e4 * (model_vols - vols), model_vols, 1e4 * np.asarray(se / vega),
+               bool(sol.success))
+
+
 def calibrate(model: Model, curve, quotes, free: Sequence[str] = ("sigma",),
               ybar_fn=None, key=None, n_paths=2**15, steps_per_year=24, passes=2) -> Fit:
     """Least-squares fit of the parameters named in `free`, starting from `model`.
@@ -58,18 +108,7 @@ def calibrate(model: Model, curve, quotes, free: Sequence[str] = ("sigma",),
         m = model._replace(**{name: theta[i] for i, name in enumerate(free)})
         return swaption_prices(m, curve, swp, strikes, ybar_fn, key, n_paths, steps_per_year)
 
-    resid = jax.jit(lambda th: 1e4 * (price(th)[0] - target) / vega_j)
-    jac = jax.jit(jax.jacfwd(lambda th: 1e4 * (price(th)[0] - target) / vega_j))
-
-    x0 = np.array([getattr(model, n) for n in free], dtype=float)
-    lo, hi = (np.array([_BOUNDS[n][k] for n in free]) for k in (0, 1))
-    # The variance scheme matches distributions, not paths, so its samples are
-    # not pathwise differentiable in eta: fall back to finite differences then.
-    ad = "eta" not in free
-    sol = least_squares(lambda th: np.asarray(resid(jnp.asarray(th))), x0,
-                        jac=(lambda th: np.asarray(jac(jnp.asarray(th)))) if ad else "2-point",
-                        diff_step=None if ad else 1e-2,
-                        bounds=(lo, hi), x_scale=[_SCALE[n] for n in free], xtol=1e-10)
+    sol = _solve(model, free, lambda th: 1e4 * (price(th)[0] - target) / vega_j)
     fitted = model._replace(**{n: float(v) for n, v in zip(free, sol.x)})
     p, se = swaption_prices(fitted, curve, swp, strikes, ybar_fn, key, n_paths, steps_per_year)
     vols = bl.implied_normal_vol(np.asarray(p) / quotes.annuity, quotes.forward,

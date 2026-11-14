@@ -109,21 +109,36 @@ def paper_figures() -> dict:
     return json.loads(files("slidingcurve").joinpath("data/paper_figures_digitised.json").read_text())
 
 
+_MARKET_NODES = np.array([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 9, 10,
+                          12, 14, 16, 18, 20, 22.5, 25, 27.5, 30])
+
+
+def paper_smile():
+    """Section 9.4 smile on the 20y x 5y yield option, read off Figure 11:
+    strike offsets from at-the-money, the market's normal vols and the vols
+    of the paper's own fit (all in decimal units)."""
+    f = paper_figures()["fig11"]
+    k = np.asarray(f["strikes"])
+    return (k - k[2]) * 1e-4, np.asarray(f["market"]) * 1e-4, np.asarray(f["paper_fit"]) * 1e-4
+
+
 def paper_curve(which: str = "baseline") -> Curve:
-    """The paper's synthetic zero curve: 'baseline' (Figure 2) or 'steep'
-    (Figure 5), as a spline through yields read off the figure.
+    """A zero curve from the paper, as a spline through yields read off a
+    figure: the synthetic 'baseline' (Figure 2) and 'steep' (Figure 5) curves,
+    or the 21-Aug-2026 USD 'market' curve of Section 9.4 (Figure 10).
 
     Two assumptions: the yield at T = 0 is extrapolated linearly from the
-    first two nodes, and beyond the 40 years the figures show the yield is
-    extended quadratically to 45 years (the model needs forwards out to
-    T + delta). Forwards amplify digitisation error by a factor of about T,
+    first two nodes, and beyond the last maturity the figures show (40 years,
+    30 for the market curve) the yield is extended quadratically by five years
+    (the model needs forwards out to T + delta). Forwards amplify digitisation error by a factor of about T,
     so nodes are spaced more widely at the long end.
     """
-    fig = paper_figures()[{"baseline": "fig2", "steep": "fig5"}[which]]
+    fig = paper_figures()[{"baseline": "fig2", "steep": "fig5", "market": "fig10"}[which]]
+    _NODES = _MARKET_NODES if which == "market" else globals()["_NODES"]
     t, y = np.asarray(fig["T"]), np.asarray(fig["Y"], dtype=float) * 1e-4
     nodes = np.interp(_NODES, t, y)
     y0 = nodes[0] - (nodes[1] - nodes[0]) / (_NODES[1] - _NODES[0]) * _NODES[0]
     quad = np.polyfit(_NODES[-4:], nodes[-4:], 2)
-    ext = np.array([42.5, 45.0])
+    ext = _NODES[-1] + np.array([2.5, 5.0])
     return Curve.from_zero_nodes(np.concatenate([[0.0], _NODES, ext]),
                                  np.concatenate([[y0], nodes, np.polyval(quad, ext)]))
