@@ -29,7 +29,7 @@ paper are accurate to about 0.3bp (checked below).
 | A6 | Skew fit | **explained** to within Monte-Carlo noise; question to authors |
 | A7 | Three-parameter fit | **explained**: eta not identified at Monte-Carlo precision; question to authors |
 | A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
-| A10 | Two values of sigma for the skew fit | **paper inconsistency**, confirmed |
+| A10 | Two values of sigma for the skew fit | **closed as a typo in the text**: the caption's 1.1999% is the value used; not put to the authors |
 | B1 | Calibration with eta free | **fixed**: variance step smooth in eta, autodiff |
 | B2 | Calibration speed | **fixed**: 2.6x on one core, 16x on 16 cores, same results |
 | B3 | Gaussian decomposition example | **fixed**: baseline curve, compared with Figure 2 |
@@ -238,7 +238,8 @@ by 3-5bp.
 
 ## A10. Two values of sigma for the skew fit
 
-**Status: paper inconsistency, confirmed.** The text of Section 9.4 says
+**Status: closed as a typo in the text; not put to the authors.** The
+figures settle which value was used, so there is nothing to ask. The text of Section 9.4 says
 the skew fit gives `sigma = 1.12%`; the caption of Figure 13 says 1.1999%.
 At `b = 0.367` (`experiments/a6_skew_fit.py`, `a10_text_sigma.py`):
 

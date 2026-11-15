@@ -70,16 +70,16 @@ cap is the more likely cause.
 
 ---
 
-## Q3 (A6, A10)
+## Q3 (A6)
 
-**What weights did the skew fit of Figure 11 use, and is "sigma = 1.12%" in
-Section 9.4 a typo for 1.1999%?**
+**What weights did the skew fit of Figure 11 use?**
 
 The text says the fit matches the at-the-money quote exactly; equal weights
-miss it by 1.9bp, so we pin it. At `b = 0.367`, 1.1999% (the caption of
-Figure 13) reproduces your fitted vols to 0.7bp and Figure 12's gamma(30y)
-to 140.5 against 140.3bp; 1.12% misses Figure 11 by 3-5bp under any
-reading of the option.
+miss it by 1.9bp, so we pin it. Your stated parameters (1.1999%, the
+caption of Figure 13, and `b = 0.367`) reproduce your fitted vols to 0.7bp
+and Figure 12's gamma(30y) to 140.5 against 140.3bp, but our own fit lands
+at 1.1890% and 0.353. Were the quotes weighted, and how? (The "1.12%" in
+the text of Section 9.4 we take to be a typo, as the figures use 1.1999%.)
 
 ---
 
