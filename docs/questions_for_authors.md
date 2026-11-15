@@ -152,6 +152,24 @@ reproduces it, and none even gets both the drooping `b = 0` line and the
 steep `b = 1` skew. The two features need forward mismatches of opposite
 sign. So if Figure 4 is a bug, it is not a single simple one.
 
+Since then (`investigation.md`, D) three further mechanisms were refuted:
+the volatility cap (removing it moves the 20y `b = 1` slope from 39.6 to
+39.5bp, against your 109.3), sampling noise through the floor-clipped
+inversion (at 4,096-16,384 paths over 64 seeds the `b = 0` droop at +120bp
+is +0.05 +- 0.18bp, against your -13.3, and no seed loses a wing point),
+and a skew compounded per benchmark period, `b_eff = b T / delta` (it
+reaches the slope but not the level: 44.6 and 28.8bp at 20y against your
+109.3 and 74.3).
+
+The one quantitative fingerprint we have is this: the slope of your `b = 1`
+smile between -80 and +200bp is 1.01, 2.00, 3.01 and 4.28 times ours at 5,
+10, 15 and 20 years - a factor of `T / delta` - while the at-the-money
+levels agree with ours to about 1bp and the 5y panel matches outright. No
+local volatility `sigma g(Y_1 / Ybar)` can carry that extra factor of the
+expiry in its slope without raising the at-the-money vol by 20% or more at
+20y, where yours rises by 9%. So: what does Figure 4 plot, and does its
+skew acquire a factor of the expiry anywhere in the code that produced it?
+
 ---
 
 ## Q7 (A2)

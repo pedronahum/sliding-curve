@@ -806,6 +806,67 @@ library matches. This narrows Q6 but does not answer it.
 
 ---
 
+## D. Figure 4 after the bug search: three more mechanisms refuted, and a fingerprint
+
+**Status: paper inconsistency, unchanged, with three more refutations and a
+quantitative fingerprint for the authors.** Everything below is new; the
+settings are those of A1 (baseline curve, `sigma = 1%`, `eta = 0`, bootstrap
+scaling, strikes from the mean) unless stated.
+
+*D1, the cap and the wing noise* (`experiments/d1_fig4_cap_and_noise.py`).
+Two mechanisms that could shape Figure 4 without touching the 5y panel:
+
+- The volatility cap binds in the right tail at `b >= 0.5`, exactly where the
+  skew lives, so a cap in this code's pricing runs could flatten its smiles.
+  Removing it does not: the 20y `b = 1` slope between -80 and +200bp is 39.6bp
+  at the 10x cap and 39.5bp with the cap at 1e6 x `sigma` (paper 109.3), and
+  the ATM change `b = 1` vs `b = 0` stays at -9.1bp (paper +5.9). Refuted.
+- The drooping `b = 0` line and its missing wing points as sampling noise
+  through the floor-clipped inversion: at 4,096 (16,384) pseudo-random paths
+  over 64 seeds the droop at +120bp is +0.05 +- 0.18 (+0.02 +- 0.08) bp
+  against the paper's -13.3, and no seed loses the +160 or +200bp point.
+  Refuted.
+
+*D2, the fingerprint* (`experiments/d2_fig4_slope_by_expiry.py`). The excess
+skew is not an offset, it is a factor that grows with expiry:
+
+| expiry | slope(-80 -> +200), this code | paper | ratio | ATM change b = 1 - b = 0: code / paper |
+|---|---|---|---|---|
+| 5y | 32.3 | 32.5 | 1.01 | -4.1 / nan |
+| 10y | 29.7 | 59.4 | 2.00 | -6.7 / +1.5 |
+| 15y | 26.7 | 80.5 | 3.01 | -8.4 / +1.2 |
+| 20y | 25.6 | 109.3 | 4.28 | -9.0 / +5.9 |
+
+The ratio is `T / delta` to within 7%, while the at-the-money levels agree
+with the paper's to about 1bp and the 5y panel matches outright. Whatever
+Figure 4 plots, its skew carries one extra factor of the expiry in benchmark
+periods.
+
+*D3, the compounded skew* (`experiments/d3_fig4_compounded_skew.py`). A slope
+ratio of `T / delta` at an unchanged level is the first-order signature of
+the skew exponent compounded per benchmark period, `b_eff = b T / delta`.
+Priced with `b_eff` in the library's affine form, the 10y `b = 1` slope
+reaches 47.5bp against the paper's 59.4 while the at-the-money vol collapses
+to 60.6bp against the paper's 80.6; at 20y, 44.6 and 28.8 against 109.3 and
+74.3. The form `R ** b_eff` explodes (wing prices above any invertible
+bracket). Refuted.
+
+The D3 failure is not a property of those two forms. At 20y the paper's
+`b = 1` smile asks for a slope 4.3 times this code's together with an
+at-the-money vol 1.09 times its `b = 0` one. In any local volatility
+`sigma g(Y_1 / Ybar)` the slope at the centre is `g'(1)` and the at-the-money
+vol is `rms(g)`; with `sd(Y_1) / Ybar = 0.64` at 20y, `g'(1) = 4.3` puts
+`rms(g)` above 1.2 unless `g` is flat outside a narrow band about the centre,
+and such a `g` kinks the smile instead of running straight as Figure 4's do.
+The affine form with `b_eff = 4` shows the generic case: slope 44.6bp,
+at-the-money 28.8bp. Figure 4's skewed panels are therefore not the implied
+vols of this option priced under any local volatility in the benchmark
+yield, at any cap, time step or path count; together with the `b = 0` panels,
+which are not Gaussian (A1, D1), the figure is not an output of the model of
+Sections 6 and 9.1 in any form tried here.
+
+---
+
 ## B1. Calibration with eta free: finite differences
 
 **Status: fixed.** `Model(variance_scheme="lognormal")` is a variance step
@@ -1268,6 +1329,18 @@ amounts of this order. The paper's high-skew convexities are therefore
 partly properties of the cap; that the shortfall is 1.7-2.6% and grows with
 b is consistent with that, but we cannot pin it down further without the
 definition.
+
+D adds one constraint and one alternative. The constraint: the cap barely
+touches the yield-option smile (the 20y `b = 1` slope is 39.6bp at the 10x
+cap and 39.5bp with the cap removed), so a cap that differs between the
+paper's decomposition and pricing runs would show in the convexity and not
+in Figure 4, which is what is observed. The alternative: the gap is 0.0,
++0.6, +2.3, +3.9 and +4.8bp at `b` = 0, 0.25, 0.5, 0.75 and 1 on the
+baseline curve (steep: +0.5, +0.3, +0.9, +2.2, +3.0), monotone in `b` as a
+single run's sampling error of gamma would be, and at the path count
+estimated in A3 (about 10,000, one seed per figure) that error is 3-7bp at
+`b = 1`. At the paper's path count the cap and the noise explanations are
+observationally equivalent; Q2 and Q7 are the same question twice.
 
 ---
 

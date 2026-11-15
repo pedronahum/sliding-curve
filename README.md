@@ -118,7 +118,16 @@ same yield options that reproduce Section 9.4:
 - At `b = 0` the option is Gaussian in every measure, yet Figure 4's 15-20y
   `b = 0` smiles are flat and then fall off a cliff, losing points half a
   standard deviation from the money. No measure, numeraire, inversion
-  forward or call/put convention produces that (A1).
+  forward or call/put convention produces that (A1); nor does sampling
+  noise through the floor-clipped inversion, at 4,096-16,384 paths over 64
+  seeds (D).
+- The excess skew has a fingerprint: the paper's `b = 1` smile slope is
+  1.01, 2.00, 3.01 and 4.28 times this code's at 5, 10, 15 and 20 years, a
+  factor of `T / delta`, while the at-the-money levels agree to about 1bp.
+  The volatility cap, the time step and a skew compounded per benchmark
+  period are all refuted as its source, and no local volatility in the
+  benchmark yield can carry that factor in its slope at the paper's
+  at-the-money levels (D).
 
 Every reading of the option and every scaling and local-volatility variant
 was tried (`docs/investigation.md`, A1); none moves the 20y `b = 1` slope off
