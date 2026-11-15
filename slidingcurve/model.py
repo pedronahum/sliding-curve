@@ -18,7 +18,9 @@ and the volatility convention of Section 9.1 (basis-point vol flat in time):
 
     sigma_r = sqrt(z) sigma ((1 - b) + b Y_1 / Ybar_1(t)).
 
-Discretisation. y is advanced exactly for volatility frozen over the step.
+Discretisation. y is advanced exactly for volatility frozen over the step
+(vol_scheme="euler", the default) or for the trapezoid of sigma_r^2 between
+the start and a predicted end of the step (vol_scheme="pc", see pc_vol).
 The drift of x is then taken as the increment that keeps the benchmark yield
 (86) an exact discrete-time martingale,
 
@@ -61,6 +63,7 @@ class Model(NamedTuple):
     kappa_z: float = 0.1    # mean reversion of variance
     vol_cap: float = 10.0   # cap on sigma_r, in multiples of sigma (Remark 8)
     variance_scheme: str = "qe"   # "qe" (Andersen) or "lognormal" (smooth in eta)
+    vol_scheme: str = "euler"     # "euler" (sigma_r frozen over a step) or "pc" (predictor-corrector)
 
 
 def local_vol(model: Model, y1, ybar, z):
@@ -71,6 +74,29 @@ def local_vol(model: Model, y1, ybar, z):
     zp = jnp.maximum(z, 1e-12)          # keeps d sqrt / dz finite for autodiff
     lv = model.sigma * ((1.0 - model.b) + model.b * y1 / ybar)
     return jnp.clip(jnp.sqrt(zp) * lv, 0.0, model.vol_cap * model.sigma)
+
+
+def local_vol_dx(model: Model, y1, ybar, z, A_delta):
+    """d sigma_r / d x (through Y_1 = ... + A(delta) x), zero where the floor
+    or the cap binds. Used by the Ito correction of the predictor-corrector."""
+    zp = jnp.maximum(z, 1e-12)
+    raw = jnp.sqrt(zp) * model.sigma * ((1.0 - model.b) + model.b * y1 / ybar)
+    active = (raw > 0.0) & (raw < model.vol_cap * model.sigma)
+    return jnp.where(active, jnp.sqrt(zp) * model.sigma * model.b * A_delta / ybar, 0.0)
+
+
+def pc_vol(model: Model, vol, vol_pred, dvol_dx, dt):
+    """Predictor-corrector volatility for one step (Kloeden and Platen,
+    Section 15.5, with both weights 1/2).
+
+    Returns (variance for the y update and drift terms, diffusion coefficient,
+    Ito drift correction). The diffusion is the average of sigma_r at the
+    start and at the predicted end of the step; because the end point
+    depends on the same normal, the average alone would converge to the
+    Stratonovich integral, so -1/2 sigma_r d sigma_r / dx dt is added to keep
+    it Ito (and the noise term zero-mean to leading order). The variance is
+    the trapezoid of sigma_r^2."""
+    return 0.5 * (vol**2 + vol_pred**2), 0.5 * (vol + vol_pred), -0.5 * vol * dvol_dx * dt
 
 
 def variance_step(model: Model, z, xi, dt):
@@ -183,14 +209,15 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
         a, ystar = reversion
         rev_k = jnp.expm1(-a * dt)
     xs = (jnp.arange(t.shape[0]), curve.forward(t), curve.forward(t + delta),
-          y0, dy0, jnp.asarray(ybar), dey, rate_ey)
+          y0, dy0, jnp.asarray(ybar), jnp.concatenate([jnp.asarray(ybar)[1:], jnp.asarray(ybar)[-1:]]),
+          dey, rate_ey)
 
     snap_idx = (jnp.round(jnp.asarray(snapshot_times, dtype=float) / dt).astype(int)
                 if snapshot_times is not None else jnp.zeros(0, dtype=int))
 
     def step(state, inp):
         x, y, z, snap = state
-        i, f0, f0d, y0, dy0, yb, de, rde = inp
+        i, f0, f0d, y0, dy0, yb, yb_next, de, rde = inp
         snap = jnp.where((snap_idx == i)[:, None, None], (f0 + x)[None], snap)
         y1 = y0 + Ad * x + c_y * y
         vol = local_vol(model, y1, yb, z)
@@ -204,9 +231,18 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
         xi = jax.random.normal(jax.random.fold_in(key, i), draw_shape)
         if antithetic:
             xi = jnp.concatenate([xi, -xi], axis=2)
-        y_new = y * decay_y + var * gain_y                    # exact for frozen var
-        x_new = x + (drift_y1 - dy0 - c_y * (y_new - y)) / Ad + vol * sqdt * xi[0]
         z_new = variance_step(model, z, xi[1], dt)
+        y_new = y * decay_y + var * gain_y                    # exact for frozen var
+        noise = vol * sqdt * xi[0]
+        if model.vol_scheme == "pc":
+            x_pred = x + (drift_y1 - dy0 - c_y * (y_new - y)) / Ad + noise
+            y1_pred = y0 + dy0 + Ad * x_pred + c_y * y_new          # = Y_1 + drift + A noise
+            vol_pred = local_vol(model, y1_pred, yb_next, z_new)
+            var_c, vol_c, ito = pc_vol(model, vol, vol_pred, local_vol_dx(model, y1, yb, z, Ad), dt)
+            y_new = y * decay_y + var_c * gain_y
+            noise = vol_c * sqdt * xi[0] + ito
+        # the drift keeps E[Y_1] on its prescribed path given y_new
+        x_new = x + (drift_y1 - dy0 - c_y * (y_new - y)) / Ad + noise
         return (x_new, y_new, z_new, snap), stats
 
     shape = (n_batches, draw_shape[2] * (2 if antithetic else 1))

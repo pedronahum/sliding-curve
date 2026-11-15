@@ -21,7 +21,7 @@ import jax
 import jax.numpy as jnp
 
 from .gaussian import A, B
-from .model import Model, local_vol, variance_step
+from .model import Model, local_vol, local_vol_dx, pc_vol, variance_step
 
 
 class Swaption(NamedTuple):
@@ -129,6 +129,8 @@ def _simulate_terminal_one(model: Model, curve, expiry, ybar_fn, key, n_paths=2*
                            steps_per_year=24, measure_maturity=None, gaussian_twin=False):
     """See simulate_terminal."""
     if gaussian_twin:
+        if model.vol_scheme != "euler":
+            raise NotImplementedError("the Gaussian twin is implemented for vol_scheme='euler' only")
         return _simulate_terminal_twin(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
                                        measure_maturity)
     kappa, delta = model.kappa, model.delta
@@ -141,19 +143,26 @@ def _simulate_terminal_one(model: Model, curve, expiry, ybar_fn, key, n_paths=2*
     e2, b2 = jnp.exp(-2.0 * kappa * dt), B(2.0 * kappa, dt)
     half = n_paths // 2
     tau = expiry if measure_maturity is None else measure_maturity
-    xs = (jnp.arange(n), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, tau - t))
+    xs = (jnp.arange(n), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, tau - t),
+          curve.fwd_yield(t + dt, t + dt + delta), ybar_fn(t + dt))
 
     def step(state, inp):
         x, y, z = state
-        i, y0, yb, g = inp
-        vol = local_vol(model, y0 + Ad * x + c_y * y, yb, z)
+        i, y0, yb, g, y0_next, yb_next = inp
+        y1 = y0 + Ad * x + c_y * y
+        vol = local_vol(model, y1, yb, z)
         var = vol**2
         xi = jax.random.normal(jax.random.fold_in(key, i), (2, half))
         xi = jnp.concatenate([xi, -xi], axis=1)
+        z_new = variance_step(model, z, xi[1], dt)
         # exact for the linear part with volatility frozen over the step
         x_new = x * e1 + (y - var * g) * b1 + vol * jnp.sqrt(b2) * xi[0]
         y_new = y * e2 + var * b2
-        z_new = variance_step(model, z, xi[1], dt)
+        if model.vol_scheme == "pc":
+            vol_pred = local_vol(model, y0_next + Ad * x_new + c_y * y_new, yb_next, z_new)
+            var_c, vol_c, ito = pc_vol(model, vol, vol_pred, local_vol_dx(model, y1, yb, z, Ad), dt)
+            x_new = x * e1 + (y - var_c * g) * b1 + vol_c * jnp.sqrt(b2) * xi[0] + ito
+            y_new = y * e2 + var_c * b2
         return (x_new, y_new, z_new), None
 
     init = (jnp.zeros(2 * half), jnp.zeros(2 * half), jnp.ones(2 * half))

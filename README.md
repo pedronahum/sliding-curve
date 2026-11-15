@@ -259,6 +259,10 @@ clarify them:
 - **Time stepping.** Monthly for the decomposition, 24 steps a year for pricing. `y` is advanced exactly for frozen
   volatility, and the drift of `x` is the increment that keeps the benchmark
   yield an exact discrete martingale; only the diffusion is Euler.
+  `Model(vol_scheme="pc")` replaces the frozen volatility by a
+  predictor-corrector (trapezoid for `y`, averaged diffusion with the Ito
+  correction); it agrees with the default at 12 steps a year and halves the
+  error at very coarse steps (A2).
 - **Variance process.** Andersen's quadratic-exponential scheme (full-truncation
   Euler lost up to 4% of `E[z]` at `eta = 1.5`); it agrees with exact CIR
   sampling to 0.1bp of at-the-money vol. `variance_scheme="lognormal"` is a
@@ -290,7 +294,7 @@ error, since each device draws its own random numbers.
 
 ```bash
 pip install -e ".[dev]"
-pytest                                   # 101 tests, about four minutes on CPU
+pytest                                   # 103 tests, about four minutes on CPU
 python examples/gaussian_decomposition.py
 python examples/joshi_calibration.py
 python examples/skew_sweep.py

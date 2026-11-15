@@ -124,7 +124,7 @@ has been run:
 | the cap of Remark 8 ("10x the initial volatility") | A2 | gamma(40y) at `b = 1` moves 26bp between 10x and 12x; the paper's values imply 10.4-11.4x, not one level; undetermined |
 | the floor of the affine local vol (absorb, reflect, floor the rate) | A2, A1 | reflecting is within 0.1bp of absorbing; flooring the rate breaks a matched point by 3bp, ruled out |
 | bootstrap expiry grid | A2 | up to 3.4bp at `b = 1`; monthly is converged |
-| time step | A2 | within 1bp at 12, 24 and 48 steps a year |
+| time step; volatility frozen over a step or predictor-corrector | A2 | within 1bp at 12, 24 and 48 steps a year; the predictor-corrector agrees at 12/yr and halves the coarse-step error (+6 to +3bp at 2/yr, `b = 1`) |
 | P-drift scheme (exact martingale or Euler) | A2 | Euler lowers gamma by 0.2-2.2bp, away from the paper |
 | variance scheme for `z` | A3, B1 | reflection Euler changes Figure 9 at large eta; others agree |
 | curve beyond the plotted range | A8 | 7.5bp in `Y_eh(30y)` |
@@ -1016,6 +1016,56 @@ At 40y and `b = 1` the library's own `E^P[Y_1(40)] - Y_1(0)` is -5.3 +- 3.1
 and -4.4 +- 2.1bp for the two seeds, and +3.8bp at 4 steps a year. The
 scheme is a martingale in expectation by construction, so this is noise
 from the heavy right tail.
+
+*Volatility frozen over a step: not the explanation either.* Both
+simulators hold `sigma_r` at its start-of-step value over each step, for the
+diffusion and for the update of `y`. `Model(vol_scheme="pc")` adds a
+predictor-corrector instead (`model.pc_vol`):
+
+- An Euler step predicts the end of the step.
+- `y` uses the trapezoid of `sigma_r^2` between the two ends.
+- The diffusion uses the average of the two vols, with the Ito correction
+  `-1/2 sigma_r d sigma_r/dx dt` (Kloeden and Platen, Section 15.5). Without
+  the correction the average converges to the Stratonovich integral.
+- The P-drift still keeps `E[Y_1]` on its path exactly, given the corrected
+  `y`.
+
+The default is unchanged. `experiments/a2_predictor_corrector.py` compares
+the two schemes on the same normals. gamma(40y), bp; in brackets the change
+from 48 steps a year with Euler on the same seeds, whose own noise is about
+1bp:
+
+| case | paper | Euler 48/yr | Euler 12/yr | PC 12/yr | Euler 4/yr | PC 4/yr | Euler 2/yr | PC 2/yr |
+|---|---|---|---|---|---|---|---|---|
+| baseline, b = 0.5 | 202.1 | 199.0 | 198.7 (-0.3) | 198.8 (-0.2) | 199.6 (+0.6) | 199.9 (+0.9) | 199.4 (+0.4) | 200.0 (+1.0) |
+| baseline, b = 1 | 323.3 | 315.5 | 317.2 (+1.7) | 316.8 (+1.3) | 319.9 (+4.4) | 318.6 (+3.1) | 321.7 (+6.2) | 318.4 (+2.9) |
+| steep, b = 1 | 186.3 | 182.2 | 183.1 (+0.8) | 182.8 (+0.5) | 184.2 (+1.9) | 183.3 (+1.1) | 183.9 (+1.7) | 182.2 (-0.0) |
+
+20y x 5y smiles (131,072 paths, same normals), predictor-corrector minus
+Euler, bp, from -200 to +200bp:
+
+| case | 24 steps a year | 4 steps a year |
+|---|---|---|
+| `b = 1` (Figure 4) | -0.13 to -0.10 | -0.66 to -0.45 |
+| `b = 0`, eta = 1.5 (Figure 8) | -0.09 to -0.25 | -0.39 to -1.27 |
+
+At 12 steps a year or finer, the two schemes agree within noise, so
+freezing the volatility over a step costs nothing at the step sizes used
+throughout. At coarse steps, Euler drifts upward at `b = 1` (+6bp at 2
+steps a year) and the predictor-corrector roughly halves that. So a paper
+run on very coarse steps would come out *above* ours at high skew, as the
+paper does. But the effect needs 2-4 steps a year to reach the size of
+the gap, and it does not give the pattern across `b` (+0.6 at `b = 0.5`
+against the paper's +3.1). Choosing a step size to match would be tuning,
+so this is recorded as a sensitivity, not an explanation.
+
+`tests/test_vol_scheme.py`:
+
+- The predictor-corrector equals Euler in the Gaussian case. The match is
+  to 1e-7, not bit for bit: at eta = 0 the QE step returns `z = 1` only to
+  about 1e-6, because `psi` is floored at 1e-12.
+- With skew the decomposition still closes, `E[Y_1]` stays a martingale
+  within noise, and gamma agrees with Euler.
 
 *The cap.* Remark 8 caps "the realized volatility in the simulations ... at
 10x the initial volatility" to deal with moment explosion under stochastic
