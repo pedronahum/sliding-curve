@@ -124,7 +124,7 @@ has been run:
 | the cap of Remark 8 ("10x the initial volatility") | A2 | gamma(40y) at `b = 1` moves 26bp between 10x and 12x; the paper's values imply 10.4-11.4x, not one level; undetermined |
 | the floor of the affine local vol (absorb, reflect, floor the rate) | A2, A1 | reflecting is within 0.1bp of absorbing; flooring the rate breaks a matched point by 3bp, ruled out |
 | bootstrap expiry grid | A2 | up to 3.4bp at `b = 1`; monthly is converged |
-| time step; volatility frozen over a step or predictor-corrector | A2 | within 1bp at 12, 24 and 48 steps a year; the predictor-corrector agrees at 12/yr and halves the coarse-step error (+6 to +3bp at 2/yr, `b = 1`) |
+| time step; volatility frozen over a step or predictor-corrector | A2 | daily steps (365/yr) move gamma(40y) by at most 0.5bp from monthly; both schemes agree at daily steps; the gaps stay (+2.8, +7.0, +3.3bp) |
 | P-drift scheme (exact martingale or Euler) | A2 | Euler lowers gamma by 0.2-2.2bp, away from the paper |
 | variance scheme for `z` | A3, B1 | reflection Euler changes Figure 9 at large eta; others agree |
 | curve beyond the plotted range | A8 | 7.5bp in `Y_eh(30y)` |
@@ -1134,6 +1134,43 @@ so this is recorded as a sensitivity, not an explanation.
   about 1e-6, because `psi` is floored at 1e-12.
 - With skew the decomposition still closes, `E[Y_1]` stays a martingale
   within noise, and gamma agrees with Euler.
+
+*Daily steps: the time step is closed as an explanation.*
+`experiments/a2_daily_steps.py` runs 365 steps a year: 14,600 steps to
+40y, 1,048,576 paths, two seeds, both volatility schemes. gamma(40y), bp,
+with the s.e. of the two-seed mean:
+
+| case | paper | 12/yr Euler | 48/yr Euler | daily Euler | daily PC | paper - daily |
+|---|---|---|---|---|---|---|
+| baseline, b = 0 | 119.0 | 119.00 | 119.00 | 119.00 | | +0.02 |
+| baseline, b = 0.5 | 202.1 | 198.87 +- 0.14 | 199.20 +- 0.15 | 199.35 +- 0.13 | 199.36 | +2.77 |
+| baseline, b = 1 | 323.3 | 316.79 +- 0.40 | 316.29 +- 0.46 | 316.33 +- 0.33 | 316.32 | +6.97 |
+| steep, b = 1 | 186.3 | 183.07 +- 0.24 | 182.78 +- 0.25 | 183.00 +- 0.23 | 183.00 | +3.33 |
+
+- From monthly to daily steps, gamma moves by at most 0.5bp, which is
+  within the noise between runs.
+- At daily steps the two volatility schemes agree to 0.01bp.
+- The gaps to the paper (+2.8, +7.0, +3.3bp) are therefore not time-step
+  error, under either scheme.
+
+The decomposition residual does fall with the step size: at `b = 1` it is
+-1.17bp at 12 steps a year, -0.39 at 48, and -0.03 daily (Euler); the
+predictor-corrector gives -0.09 already at 12 a year. This is
+discretisation error in the identity `Y = Y_eh + theta - gamma` evaluated
+on the simulated profiles. gamma itself does not move, so the error sits
+in `Y_eh` and `theta`. At monthly steps it is a known 1bp-scale error in
+those two at high skew; it has no bearing on the convexity gap.
+
+20y x 5y smiles, daily minus 24 steps a year (262,144 paths, bp, from
+-200 to +200bp):
+
+- `b = 1`: +0.35 to +0.61, a common level shift of about two standard
+  errors.
+- `eta = 1.5`: -0.04 to +0.36, with +0.13 at the money.
+
+At `eta = 1.5` this direction would lower, not raise, the recalibrated
+convexity of Figure 9 (A3). Neither shift is material for A1 (a 60bp gap
+at +200) or A3.
 
 *The cap.* Remark 8 caps "the realized volatility in the simulations ... at
 10x the initial volatility" to deal with moment explosion under stochastic
