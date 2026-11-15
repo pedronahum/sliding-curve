@@ -121,8 +121,8 @@ has been run:
 | open choice | where tested | effect on the open items |
 |---|---|---|
 | the yield option (underlying, measure, inversion forward, strike reference) | A9, A1, A4 | pinned down except the strike reference (bounded) |
-| the cap of Remark 8 ("10x the initial volatility") | A2 | 1-6bp at `b = 1`, 40y; undetermined |
-| the floor of the affine local vol (absorb, reflect, floor the rate) | A2, A1 | within 1bp; flooring the rate +3bp at one point |
+| the cap of Remark 8 ("10x the initial volatility") | A2 | gamma(40y) at `b = 1` moves 26bp between 10x and 12x; the paper's values imply 10.4-11.4x, not one level; undetermined |
+| the floor of the affine local vol (absorb, reflect, floor the rate) | A2, A1 | reflecting is within 0.1bp of absorbing; flooring the rate breaks a matched point by 3bp, ruled out |
 | bootstrap expiry grid | A2 | up to 3.4bp at `b = 1`; monthly is converged |
 | time step | A2 | within 1bp at 12, 24 and 48 steps a year |
 | P-drift scheme (exact martingale or Euler) | A2 | Euler lowers gamma by 0.2-2.2bp, away from the paper |
