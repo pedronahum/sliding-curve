@@ -1,0 +1,11 @@
+gamma(40y), bp: library (exact martingale) vs Euler drift, same normals; and E[Y1(40)] - Y1(0)
+baseline b=0.00 12/yr  paper  119.0  library  119.0  euler  119.0  (diff +0.00)   E[Y1]-Y1(0):  +0.00 /  -0.81   Y_eh:  304.9 /  304.4
+baseline b=0.00  4/yr  paper  119.0  library  119.0  euler  119.0  (diff +0.00)   E[Y1]-Y1(0):  -0.00 /  -2.43   Y_eh:  304.9 /  303.2
+baseline b=0.50 12/yr  paper  202.1  library  198.7  euler  198.4  (diff -0.30)   E[Y1]-Y1(0):  -3.96 /  -5.23   Y_eh:  268.9 /  268.3
+baseline b=0.50  4/yr  paper  202.1  library  199.6  euler  198.7  (diff -0.90)   E[Y1]-Y1(0):  +2.99 /  -0.86   Y_eh:  270.3 /  268.6
+baseline b=1.00 12/yr  paper  323.3  library  317.2  euler  316.4  (diff -0.73)   E[Y1]-Y1(0):  -4.83 /  -6.12   Y_eh:  239.9 /  239.4
+baseline b=1.00  4/yr  paper  323.3  library  319.9  euler  317.7  (diff -2.18)   E[Y1]-Y1(0):  +3.76 /  -0.20   Y_eh:  241.6 /  240.0
+steep    b=0.50 12/yr  paper  129.9  library  128.8  euler  128.6  (diff -0.17)   E[Y1]-Y1(0):  -1.99 /  -2.99   Y_eh:  297.2 /  296.5
+steep    b=0.50  4/yr  paper  129.9  library  128.9  euler  128.4  (diff -0.52)   E[Y1]-Y1(0):  +1.42 /  -1.59   Y_eh:  298.0 /  295.9
+steep    b=1.00 12/yr  paper  186.3  library  183.1  euler  182.6  (diff -0.48)   E[Y1]-Y1(0):  -3.20 /  -4.32   Y_eh:  279.5 /  278.9
+steep    b=1.00  4/yr  paper  186.3  library  184.2  euler  182.7  (diff -1.43)   E[Y1]-Y1(0):  +2.52 /  -0.90   Y_eh:  280.7 /  278.8

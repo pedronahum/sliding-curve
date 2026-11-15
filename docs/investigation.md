@@ -939,6 +939,30 @@ year agree within about 1bp. The same runs give the precise remaining gap:
 
 (The 65,536-path runs with seed 1 used above happened to be high draws.)
 
+*Drift scheme: not the explanation.* The library's P-step keeps `Y_1` an
+exact discrete martingale. A literal implementation of (52) would use the
+left-point Euler drift `(y - kappa x - mu^Y / A) dt`, which leaves an O(dt)
+drift in `E^P[Y_1]`. At `b > 0` the level of `Y_1` sets the local vol, so
+the drift could in principle reach gamma. `experiments/a2_euler_drift.py`
+runs both schemes on the same normals (262,144 paths, two seeds, no
+fitting). gamma(40y), bp:
+
+| case | paper | library, 12/yr | Euler, 12/yr | library, 4/yr | Euler, 4/yr |
+|---|---|---|---|---|---|
+| baseline, b = 0 | 119.0 | 119.0 | 119.0 | 119.0 | 119.0 |
+| baseline, b = 0.5 | 202.1 | 198.7 | 198.4 | 199.6 | 198.7 |
+| baseline, b = 1 | 323.3 | 317.2 | 316.4 | 319.9 | 317.7 |
+| steep, b = 0.5 | 129.9 | 128.8 | 128.6 | 128.9 | 128.4 |
+| steep, b = 1 | 186.3 | 183.1 | 182.6 | 184.2 | 182.7 |
+
+The Euler drift pulls `E^P[Y_1(40)]` down by about 1bp at 12 steps a year
+and 2-4bp at 4 a year, and lowers gamma by 0.2-0.7bp and 0.5-2.2bp
+respectively. That is the wrong direction: the paper is above the library.
+At 40y and `b = 1` the library's own `E^P[Y_1(40)] - Y_1(0)` is -5.3 +- 3.1
+and -4.4 +- 2.1bp for the two seeds, and +3.8bp at 4 steps a year. The
+scheme is a martingale in expectation by construction, so this is noise
+from the heavy right tail.
+
 *The cap.* Remark 8 caps "the realized volatility in the simulations ... at
 10x the initial volatility" to deal with moment explosion under stochastic
 volatility. At high skew it binds even with eta = 0: in P the benchmark's
