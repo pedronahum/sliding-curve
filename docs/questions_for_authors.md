@@ -59,6 +59,15 @@ Figure 9 at eta = 0.5 and 1.0 sits within 0.35bp. So, specifically: how
 many paths per figure, were they antithetic, and did the curves of one
 figure (the skews of Figures 3 and 6, the etas of Figures 7-9) share a seed?
 
+The answer matters most for the random numbers. That estimate assumes
+pseudo-random draws. With scrambled Sobol points and a Brownian bridge, the
+noise in convexity at high skew is 5-11 times smaller per path than with
+pseudo-random antithetic draws (a variance 23-115 times smaller;
+`investigation.md`, B4). If you used quasi-random numbers, the scatter of
+Figures 3 and 6 would then need only a few hundred paths. So if your runs
+were quasi-random, the high-skew gap (A2) is unlikely to be noise, and the
+cap is the more likely cause.
+
 ---
 
 ## Q3 (A6, A10)

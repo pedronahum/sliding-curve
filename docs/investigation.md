@@ -33,7 +33,7 @@ paper are accurate to about 0.3bp (checked below).
 | B1 | Calibration with eta free | **fixed**: variance step smooth in eta, autodiff |
 | B2 | Calibration speed | **fixed**: 2.6x on one core, 16x on 16 cores, same results |
 | B3 | Gaussian decomposition example | **fixed**: baseline curve, compared with Figure 2 |
-| B4 | Monte-Carlo noise | **fixed**: Gaussian-twin control variate, variance cut 14-28x |
+| B4 | Monte-Carlo noise | **fixed**: Gaussian-twin control variate (variance cut 14-28x); quasi-random Sobol with a Brownian bridge (23-290x with skew, 1-5x with stochastic vol) |
 | B5 | Licence | **options listed**, none chosen (as instructed) |
 | C1 | Multi-factor model | **built**, with tests |
 | C2 | Ho-Lee closed forms | **built**, with tests |
@@ -79,7 +79,7 @@ closed form's 70.9bp (A4, Q2); the skew fit's weights and path count (A6, Q2-Q3)
 eta's identification in the three-parameter fit (A7, Q5); the curve beyond
 the plotted range, a 7.5bp spread in Y_eh at 30y across extensions (A8, Q4); and the strike
 reference of the yield option (A9, Q1). A licence is still to be chosen
-(B5), and quasi-random numbers were not added (B4 used a control variate).
+(B5). Quasi-random numbers are now available (B4).
 
 *Review of the equations.* A line-by-line check of the paper's Sections
 3-9 and Appendices C-D against the code found no discrepancy (section
@@ -893,6 +893,74 @@ the next step if eta matters.
 Gaussian case for both strike references, unbiased against the plain
 estimator with skew and stochastic volatility, and that it reduces the
 standard error at the market skew.
+
+*Quasi-random numbers.* `qmc.sobol_normals` generates randomised
+quasi-random normals: Owen-scrambled Sobol points, laid onto each Brownian
+path by a Brownian bridge. The bridge gives the first, best-spread
+coordinates to the path's end point and midpoints, and the fine detail to
+later ones. The rate and variance drivers are interleaved. This is the
+textbook construction (Glasserman 2004, Section 5.5), the one generally
+recommended for interest-rate models; we did not have Andersen and
+Piterbarg (2010) to check its exact recipe against. `simulate` and
+`simulate_terminal` take the draws through `normals=` in place of the
+pseudo-random ones. Each independent scramble is unbiased, so the spread
+across scrambles is an honest error.
+
+`experiments/b4_qmc.py` uses 16 replications at each path count (seeds
+for MC, scrambles for QMC). The table gives the standard error of one run,
+bp, with the variance gain over MC in brackets:
+
+| quantity | paths | MC (antithetic) | QMC + bridge | Sobol, no bridge |
+|---|---|---|---|---|
+| gamma(40y), baseline, b = 0.5 | 1,024 | 6.06 | 1.15 (x28) | 6.29 (x0.9) |
+| | 16,384 | 1.17 | 0.11 (x115) | 0.82 (x2.0) |
+| gamma(40y), baseline, b = 1 | 1,024 | 19.4 | 4.01 (x23) | 16.6 (x1.4) |
+| | 16,384 | 3.68 | 0.61 (x36) | 2.08 (x3.1) |
+| 20y x 5y ATM vol, eta = 1.5 | 1,024 | 1.92 | 1.74 (x1.2) | 1.21 (x2.5) |
+| | 16,384 | 0.50 | 0.35 (x2.1) | 0.42 (x1.4) |
+| 20y x 5y vol at +200bp, b = 1 | 1,024 | 4.58 | 0.49 (x88) | 3.32 (x1.9) |
+| | 16,384 | 0.99 | 0.08 (x171) | 0.79 (x1.6) |
+
+(4,096 paths in `results/b4_qmc.log`.)
+
+- With skew and no stochastic volatility, QMC with the bridge cuts the
+  variance 23-290 times. That is more than the control variate's 14-28x,
+  and unlike the control variate it also cuts the noise in the skew
+  itself.
+- Without the bridge, Sobol gains only 1-3x: in 480-960 dimensions the
+  ordering is what matters.
+- With stochastic volatility the gain is 1-5x. The variance path carries
+  as much weight as the rate path, so the effective dimension is high, and
+  the QE step switches branch, which breaks the smoothness QMC relies on.
+
+The pooled means (16 x 16,384 paths) agree across methods, and the gaps
+to the paper stay:
+
+| quantity | MC | QMC + bridge | paper |
+|---|---|---|---|
+| gamma(40y), b = 0.5 | 198.69 +- 0.29 | 199.12 +- 0.03 | 202.1 |
+| gamma(40y), b = 1 | 316.09 +- 0.92 | 317.02 +- 0.15 | 323.3 |
+| ATM vol, eta = 1.5 | 53.54 +- 0.13 | 53.40 +- 0.09 | 53.58 |
+| vol at +200bp, b = 1 | 79.66 +- 0.25 | 79.69 +- 0.02 | 140.1 (Figure 4) |
+
+So QMC removes our own noise from the A2 comparison (gamma at `b = 1` is
+now known to 0.15bp) but does not touch the gap, which is not ours to
+close. It also changes the A3 path-count reading if the paper used
+quasi-random numbers: its high-skew scatter would then correspond to only
+a few hundred paths, which makes noise a less likely explanation of A2
+(added to Q2).
+
+`tests/test_qmc.py` checks:
+
+- the bridge builds every point once;
+- the normals are standard and independent;
+- passing the library's own draws through `normals=` reproduces the
+  default bit for bit;
+- a quasi-random Gaussian option price matches the closed form, with a
+  smaller error than MC at equal paths.
+
+The defaults are unchanged: the paper's figures are compared at
+pseudo-random settings.
 
 ---
 

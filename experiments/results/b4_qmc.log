@@ -1,0 +1,24 @@
+
+gamma(40y) b=0.5 (paper 202.12); s.e. of one run (bp), and variance gain over MC [124s]
+  N =   1024: MC  6.055   QMC+bridge  1.154 (x 27.5)   QMC plain  6.291 (x  0.9)
+  N =   4096: MC  3.036   QMC+bridge  0.362 (x 70.2)   QMC plain  1.693 (x  3.2)
+  N =  16384: MC  1.165   QMC+bridge  0.109 (x115.1)   QMC plain  0.820 (x  2.0)
+  pooled, 16 x 16,384 paths: mc  198.69 +- 0.29   qmc-bridge  199.12 +- 0.03   qmc-plain  199.04 +- 0.21
+
+gamma(40y) b=1 (paper 323.3); s.e. of one run (bp), and variance gain over MC [235s]
+  N =   1024: MC 19.379   QMC+bridge  4.010 (x 23.3)   QMC plain 16.578 (x  1.4)
+  N =   4096: MC  8.083   QMC+bridge  1.417 (x 32.5)   QMC plain  4.633 (x  3.0)
+  N =  16384: MC  3.675   QMC+bridge  0.610 (x 36.3)   QMC plain  2.075 (x  3.1)
+  pooled, 16 x 16,384 paths: mc  316.09 +- 0.92   qmc-bridge  317.02 +- 0.15   qmc-plain  316.62 +- 0.52
+
+ATM vol 20y eta=1.5 (paper 53.58); s.e. of one run (bp), and variance gain over MC [320s]
+  N =   1024: MC  1.916   QMC+bridge  1.743 (x  1.2)   QMC plain  1.213 (x  2.5)
+  N =   4096: MC  1.079   QMC+bridge  0.505 (x  4.6)   QMC plain  0.804 (x  1.8)
+  N =  16384: MC  0.503   QMC+bridge  0.350 (x  2.1)   QMC plain  0.420 (x  1.4)
+  pooled, 16 x 16,384 paths: mc   53.54 +- 0.13   qmc-bridge   53.40 +- 0.09   qmc-plain   53.40 +- 0.11
+
+vol +200 20y b=1 (paper 140.08); s.e. of one run (bp), and variance gain over MC [405s]
+  N =   1024: MC  4.579   QMC+bridge  0.487 (x 88.4)   QMC plain  3.317 (x  1.9)
+  N =   4096: MC  2.521   QMC+bridge  0.149 (x287.5)   QMC plain  1.581 (x  2.5)
+  N =  16384: MC  0.987   QMC+bridge  0.076 (x170.9)   QMC plain  0.787 (x  1.6)
+  pooled, 16 x 16,384 paths: mc   79.66 +- 0.25   qmc-bridge   79.69 +- 0.02   qmc-plain   79.75 +- 0.20

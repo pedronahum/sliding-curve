@@ -74,7 +74,7 @@ def set_path_devices(n: int = None):
 
 
 def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
-                      steps_per_year=24, measure_maturity=None, gaussian_twin=False):
+                      steps_per_year=24, measure_maturity=None, gaussian_twin=False, normals=None):
     """State (x, y) at `expiry` under the forward measure of `measure_maturity`
     (the expiry itself by default).
 
@@ -87,7 +87,17 @@ def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
     scheme (a linear Gaussian recursion), for use as a control variate.
 
     Paths are split across devices if set_path_devices was called.
+
+    `normals` replaces the pseudo-random draws (e.g. qmc.sobol_normals with
+    one batch, reshaped): shape [n_steps, 2, n_paths], n_steps =
+    round(expiry * steps_per_year); `key` is then ignored and paths are not
+    antithetic pairs.
     """
+    if normals is not None:
+        if _PATH_DEVICES > 1 or gaussian_twin:
+            raise NotImplementedError("given normals: one device, no Gaussian twin")
+        return _simulate_terminal_one(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
+                                      measure_maturity, False, normals)
     if _PATH_DEVICES > 1:
         return _sharded(_simulate_terminal_one, model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
                         measure_maturity, gaussian_twin)
@@ -126,7 +136,7 @@ def _sharded(fn, model, curve, expiry, ybar_fn, key, n_paths, steps_per_year, me
 
 
 def _simulate_terminal_one(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
-                           steps_per_year=24, measure_maturity=None, gaussian_twin=False):
+                           steps_per_year=24, measure_maturity=None, gaussian_twin=False, normals=None):
     """See simulate_terminal."""
     if gaussian_twin:
         if model.vol_scheme != "euler":
@@ -143,17 +153,25 @@ def _simulate_terminal_one(model: Model, curve, expiry, ybar_fn, key, n_paths=2*
     e2, b2 = jnp.exp(-2.0 * kappa * dt), B(2.0 * kappa, dt)
     half = n_paths // 2
     tau = expiry if measure_maturity is None else measure_maturity
+    if normals is not None:
+        normals = jnp.asarray(normals, dtype=float)
+        if normals.shape != (n, 2, n_paths):
+            raise ValueError(f"normals must have shape {(n, 2, n_paths)}, got {normals.shape}")
+    given_xs = normals if normals is not None else jnp.zeros((n, 0))
     xs = (jnp.arange(n), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, tau - t),
-          curve.fwd_yield(t + dt, t + dt + delta), ybar_fn(t + dt))
+          curve.fwd_yield(t + dt, t + dt + delta), ybar_fn(t + dt), given_xs)
 
     def step(state, inp):
         x, y, z = state
-        i, y0, yb, g, y0_next, yb_next = inp
+        i, y0, yb, g, y0_next, yb_next, given = inp
         y1 = y0 + Ad * x + c_y * y
         vol = local_vol(model, y1, yb, z)
         var = vol**2
-        xi = jax.random.normal(jax.random.fold_in(key, i), (2, half))
-        xi = jnp.concatenate([xi, -xi], axis=1)
+        if normals is not None:
+            xi = given
+        else:
+            xi = jax.random.normal(jax.random.fold_in(key, i), (2, half))
+            xi = jnp.concatenate([xi, -xi], axis=1)
         z_new = variance_step(model, z, xi[1], dt)
         # exact for the linear part with volatility frozen over the step
         x_new = x * e1 + (y - var * g) * b1 + vol * jnp.sqrt(b2) * xi[0]
@@ -227,7 +245,7 @@ def swaption_prices(model: Model, curve, swp: Swaption, strikes, ybar_fn, key,
 
 def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
                         n_paths=2**15, steps_per_year=24, strike_reference="mean",
-                        control_variate=False):
+                        control_variate=False, normals=None):
     """Options on the benchmark yield Y_1(T) = Y(T, T, T + delta) itself: the
     paper's "yield option" (Figures 4, 8 and 11).
 
@@ -259,12 +277,18 @@ def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
     priced exactly, with the regression coefficient estimated per strike.
     The twin's strike sits at the same offset from its own reference, so
     in the Gaussian case the estimator has zero variance.
+
+    `normals` passes given draws to simulate_terminal (e.g. one scrambled
+    Sobol set); the prices are then valid but the returned standard errors
+    are not (they assume independent pairs): take errors across
+    independent scrambles instead.
     """
     kappa, delta = model.kappa, model.delta
     Ad, cy = A(kappa, delta), B(kappa, delta) ** 2 / (2.0 * delta)
     fwd = curve.fwd_yield(expiry, expiry + delta)
     sim = simulate_terminal(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
-                            measure_maturity=expiry + delta, gaussian_twin=control_variate)
+                            measure_maturity=expiry + delta, gaussian_twin=control_variate,
+                            normals=normals)
     x, y = sim[0], sim[1]
     y1 = fwd + Ad * x + cy * y
     mean = jnp.mean(y1)
