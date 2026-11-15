@@ -70,8 +70,8 @@ Figure 12 gamma(30y) 140.5 +- 0.2 against 140.3. Figure 9 at eta = 0.5 and
 *What is still open* (each with a question in `questions_for_authors.md`):
 Figure 4, which contradicts the paper's text, its Figure 8 and the Gaussian
 limit (A1, Q6); convexity at b = 1 and 40y 1.7-2.6% low, inside the
-sensitivity to the undefined cap (A2, Q7); Figure 9 at eta = 1.5, 202.7 +-
-1.3 against 212.8bp (A3, Q2). Estimated from the paper's own scatter, A3,
+sensitivity to the undefined cap (A2, Q7); Figure 9 at eta = 1.5, 204.2 +-
+1.3 against 212.8bp (mean of four pricing seeds) (A3, Q2). Estimated from the paper's own scatter, A3,
 A2 and the A4 level are all consistent with its sampling noise at about
 10,000 paths, but no single path count fits every figure under every
 seeding, so this is a sharper question, not an answer; the Figure 8 eta = 0 level, 71.4 against the

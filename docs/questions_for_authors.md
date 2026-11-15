@@ -153,9 +153,17 @@ gamma(40y) is 287, 318, 344 and 379bp for caps of 8x, 10x, 12x and 15x
 (`b = 0.5`: 192, 199, 204, 209bp); without a cap it explodes. With the cap
 at 10x `sigma` on the short-rate volatility (local times `sqrt(z)`), applied
 at the start of each step, we are 1.7-2.6% below Figures 3 and 6 at
-`b >= 0.5` and 40 years (e.g. 317 against 323bp), with Monte-Carlo s.e.
-under 1bp and every other setting checked (time step, bootstrap grid,
-curve extension, floors). Is "the initial volatility" `sigma`, the
+`b >= 0.5` and 40 years (e.g. 317 against 323bp). Our side of this gap is
+now pinned down:
+
+- Quasi-random runs give 317.02 +- 0.15bp.
+- Daily time steps move the result by at most 0.5bp.
+- A literal Euler drift, or a predictor-corrector for the volatility,
+  changes it by under 1bp at the usual step sizes.
+- The bootstrap grid, the curve extension and the floor on the local
+  volatility were also checked (`investigation.md`, A2).
+
+So none of the settings that remain under our control accounts for it. Is "the initial volatility" `sigma`, the
 short-rate volatility at time 0, or something else; is the cap on the
 volatility or the variance; and is it applied per step to the local part,
 to the total, or to the realised path? Also: what expiry grid did the
