@@ -81,6 +81,60 @@ the plotted range, a 7.5bp spread in Y_eh at 30y across extensions (A8, Q4); and
 reference of the yield option (A9, Q1). A licence is still to be chosen
 (B5), and quasi-random numbers were not added (B4 used a control variate).
 
+*Review of the equations.* A line-by-line check of the paper's Sections
+3-9 and Appendices C-D against the code found no discrepancy (section
+below); the one untested discretisation choice it raised, the P-drift
+scheme, moves gamma away from the paper (A2).
+
+---
+
+## Review of the paper's equations against the code
+
+Done after the A, B and C items, to look for anything that had been
+missed. The paper's Sections 3-9 and Appendices C and D were read against
+`model.py`, `pricing.py`, `volscale.py`, `gaussian.py`,
+`decomposition.py`, `curve.py` and `multifactor.py`, re-deriving where the
+code uses a different but equivalent form. Appendices B, E and F (C2, C3)
+have their own tests and were not re-derived.
+
+**No discrepancy was found.** Every equation used by the figures is
+implemented as written, or in an equivalent form verified below:
+
+| paper | code | check |
+|---|---|---|
+| (27) roll; (43) `f(t, T)` from the state | `model.simulate` (`rho`) | `rho = (f(t, t+delta) - r) / delta`, `f(t, t+delta) = f(0, t+delta) + e^(-kappa delta) (x + B(delta) y)` |
+| (44), (86) benchmark yield | `Y_1 = Y(0, t, t+delta) + A x + B^2 y / (2 delta)` | `h^Y / h = A(delta)`; `Gamma / 2 = B^2 y / (2 delta)` |
+| (45) drift, one factor | `mu_y = rho + sigma_r^2 B^2 / (2 delta)` | `int_0^delta e^(-kappa s) B(s) ds = B(delta)^2 / 2` |
+| (47), (49) with Section 9.1's `lambda = A sigma / Ybar` | `local_vol`: `sigma ((1-b) + b Y_1 / Ybar)` | `H H^Y^-1 = 1/A`, so `sigma_r = sigma_Y / A` |
+| (52) P-drift | exact discrete-martingale increment | the continuous drift of `Y_1` under (52) is identically zero: the `x` terms cancel by `A kappa delta = 1 - e^(-kappa delta)`, the `y` terms by `kappa B = 1 - e^(-kappa delta)`. So the two schemes agree as `dt -> 0`; the Euler form was tested separately (A2, *Drift scheme*) |
+| (13), (54), (55) | `decompose` | `nu_P = B(T-t) mu^Y / A`, `sigma_P = sigma_r B(T-t)`, `r = f(0, t) + x` |
+| (37) refined MPR | `lam = mu_y - d/dt E^P[Y_1]` | as in C5 |
+| (42) bonds; forward-measure drift | `pricing.bond`, `_simulate_terminal_one` | Girsanov shift `-sigma_r^2 B(tau - t)` |
+| (80)-(81) bootstrap, unweighted (Section 9.1) | `volscale.ybar_bootstrap` | the recursion is the right-end-point rectangle rule of (80), which the code telescopes |
+| (85), (87), (90), (91), (93), (94) | `gaussian.py` | (90) re-verified: `I = -y B(tau - t)` solves (89) |
+| (44), (45), (47), (52), (56), C.3.2, `d > 1` | `multifactor.py` | `H^Y = M H`; `sigma_r' = M^-1 S L` with `X = L L'`; `mu^Y` weights `W^(i)` from (45) |
+
+**What the paper leaves open, and where each choice was tested.** The
+remaining discrepancies come from choices the text does not make. Each one
+has been run:
+
+| open choice | where tested | effect on the open items |
+|---|---|---|
+| the yield option (underlying, measure, inversion forward, strike reference) | A9, A1, A4 | pinned down except the strike reference (bounded) |
+| the cap of Remark 8 ("10x the initial volatility") | A2 | 1-6bp at `b = 1`, 40y; undetermined |
+| the floor of the affine local vol (absorb, reflect, floor the rate) | A2, A1 | within 1bp; flooring the rate +3bp at one point |
+| bootstrap expiry grid | A2 | up to 3.4bp at `b = 1`; monthly is converged |
+| time step | A2 | within 1bp at 12, 24 and 48 steps a year |
+| P-drift scheme (exact martingale or Euler) | A2 | Euler lowers gamma by 0.2-2.2bp, away from the paper |
+| variance scheme for `z` | A3, B1 | reflection Euler changes Figure 9 at large eta; others agree |
+| curve beyond the plotted range | A8 | 7.5bp in `Y_eh(30y)` |
+| path count and seeding | A3 | consistent with A2, A3, A4 at about 10,000 paths, per-curve seeds |
+
+The review found no implementation error, and it raised one untested
+choice, the drift scheme, which has now been run. The open items (A1-A4,
+A6-A8) therefore remain undisclosed choices or questions for the authors,
+not misreadings of the paper's equations.
+
 ---
 
 ## Digitisation check (all A items)
