@@ -1,7 +1,7 @@
 """D2: Figure 4's excess skew as a function of expiry.
 
 D1 refuted the cap and the wing noise as sources of Figure 4's shape. This
-records the shape of the discrepancy itself, for Q6: the slope of the b = 1
+records the shape of the discrepancy itself, for Q1: the slope of the b = 1
 smile between -80 and +200bp and the at-the-money change b = 1 vs b = 0, at
 the four expiries of Figure 4, library against the digitised figure. Any
 explanation of Figure 4 has to reproduce how the excess grows with expiry.

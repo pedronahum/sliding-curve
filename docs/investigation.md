@@ -69,16 +69,16 @@ Figure 12 gamma(30y) 140.5 +- 0.2 against 140.3. Figure 9 at eta = 0.5 and
 
 *What is still open* (each with a question in `questions_for_authors.md`):
 Figure 4, which contradicts the paper's text, its Figure 8 and the Gaussian
-limit (A1, Q6); convexity at b = 1 and 40y 1.7-2.6% low, inside the
-sensitivity to the undefined cap (A2, Q7); Figure 9 at eta = 1.5, 204.2 +-
+limit (A1, Q1); convexity at b = 1 and 40y 1.7-2.6% low, inside the
+sensitivity to the undefined cap (A2, Q2); Figure 9 at eta = 1.5, 204.2 +-
 1.3 against 212.8bp (mean of four pricing seeds) (A3, Q2). Estimated from the paper's own scatter, A3,
 A2 and the A4 level are all consistent with its sampling noise at about
 10,000 paths, but no single path count fits every figure under every
 seeding, so this is a sharper question, not an answer; the Figure 8 eta = 0 level, 71.4 against the
 closed form's 70.9bp (A4, Q2); the skew fit's weights and path count (A6, Q2-Q3);
-eta's identification in the three-parameter fit (A7, Q5); the curve beyond
-the plotted range, a 7.5bp spread in Y_eh at 30y across extensions (A8, Q4); and the strike
-reference of the yield option (A9, Q1). A licence is still to be chosen
+eta's identification in the three-parameter fit (A7, Q3); the curve beyond
+the plotted range, a 7.5bp spread in Y_eh at 30y across extensions (A8, Q3); and the strike
+reference of the yield option (A9, Q3). A licence is still to be chosen
 (B5). Quasi-random numbers are now available (B4).
 
 *Review of the equations.* A line-by-line check of the paper's Sections
@@ -483,7 +483,7 @@ What this shows:
   +1.1, +2.4, +3.2). Independent seeds per curve would give that sign
   pattern about one time in 256; a seed shared across b gives it naturally,
   and then b >= 0.75 is predicted from b <= 0.5 (p 0.98-1.00). A bias that
-  grows with b (the cap, Q7) predicts the same pattern; one run per figure
+  grows with b (the cap, Q2) predicts the same pattern; one run per figure
   cannot tell them apart.
 
 The status stays **unresolved**, now with the evidence that would settle
@@ -802,7 +802,7 @@ The library row reproduces the earlier conventions run (1.1 / 7.1 / 11.0 /
 If Figure 4 comes from a coding error, it is not a single one of these.
 It would have to be a combination of errors, or an error in the
 simulation itself; the latter would not touch the 5y panel, which the
-library matches. This narrows Q6 but does not answer it.
+library matches. This narrows Q1 but does not answer it.
 
 ---
 
@@ -1340,7 +1340,8 @@ baseline curve (steep: +0.5, +0.3, +0.9, +2.2, +3.0), monotone in `b` as a
 single run's sampling error of gamma would be, and at the path count
 estimated in A3 (about 10,000, one seed per figure) that error is 3-7bp at
 `b = 1`. At the paper's path count the cap and the noise explanations are
-observationally equivalent; Q2 and Q7 are the same question twice.
+observationally equivalent; in the merged question list they are one
+question (Q2).
 
 ---
 
