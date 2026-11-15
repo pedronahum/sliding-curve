@@ -131,8 +131,12 @@ same yield options that reproduce Section 9.4:
 
 Every reading of the option and every scaling and local-volatility variant
 was tried (`docs/investigation.md`, A1); none moves the 20y `b = 1` slope off
-25bp against the paper's 110bp. Figure 4 is recorded as an inconsistency in
-the paper and put to the authors (`docs/questions_for_authors.md`).
+25bp against the paper's 110bp. `tests/test_fig4_fingerprint.py` pins the
+fingerprint above, so a pricer change that compounds the skew per benchmark
+period, or an adopted release of the authors' Figure 4 code, fails the
+suite.
+Figure 4 is recorded as an inconsistency in the paper and put to the authors
+(`docs/questions_for_authors.md`).
 
 ### The market curve (Section 9.4, Figures 10-12)
 
@@ -302,7 +306,7 @@ error, since each device draws its own random numbers.
 
 ```bash
 pip install -e ".[dev]"
-pytest                                   # 107 tests, about four minutes on CPU
+pytest                                   # 109 tests, about four minutes on CPU
 python examples/gaussian_decomposition.py
 python examples/joshi_calibration.py
 python examples/skew_sweep.py
