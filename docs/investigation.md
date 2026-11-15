@@ -535,6 +535,74 @@ size of one pricing s.e. of either code. With the control variate of B4 the
 fit noise falls (see B4), which leaves the paper's own path count and
 weights as the open question.
 
+*The quotes are not the cause.* We do not have the market's quotes, only
+the paper's plot of them in Figure 11, read off the image. How good is
+that reading?
+
+- Visible markers read to about 0.05bp (25 pixels per bp).
+- At -50bp and at the money the paper's fitted square covers the market
+  dot. The digitiser sets the hidden market value equal to the fit there,
+  so those two quotes are uncertain by up to a marker radius, about 0.4bp.
+
+`experiments/a6_quote_sensitivity.py` repeats the fit with quasi-random
+pricing (B4), so our own noise is negligible: ATM pinned, strikes from the
+mean, monthly grid, 24 steps a year. It gives sigma = 1.1905%, b = 0.3533
++- 0.0004 over four scrambles, the same point as the Monte-Carlo fit.
+
+Sensitivity to the quotes (per +1bp in the quote at -200 / -50 / ATM / +50 /
++200):
+
+| | -200 | -50 | ATM | +50 | +200 |
+|---|---|---|---|---|---|
+| sigma (%) | -0.0030 | -0.0007 | +0.0150 | +0.0007 | +0.0027 |
+| b | -0.022 | -0.005 | -0.004 | +0.005 | +0.019 |
+| gamma(30y), bp | -3.4 | -0.8 | +4.4 | +0.8 | +2.9 |
+
+The smallest change to the quotes that makes the paper's (1.1999%,
+0.367) the fit, confirmed by refitting:
+
+| quotes allowed to move | change, bp | refit |
+|---|---|---|
+| all five | -0.38 / -0.09 / +0.49 / +0.09 / +0.33 | 1.1999%, 0.366 |
+| only the hidden two (-50, ATM) | -50bp quote down 2.98, ATM up 0.49 | 1.1999%, 0.366 |
+| all but ATM (ATM held at 82bp) | about 100bp each: not reachable | |
+
+The visible quotes cannot be 0.3-0.4bp off, and a hidden quote cannot be
+3bp off. So reading errors do not explain the gap. The last row is the
+telling one.
+
+*Where the difference is: 0.5bp in pricing.* At the paper's parameters
+(1.1999%, 0.367), our pricer with quasi-random numbers gives:
+
+| | -200 | -50 | ATM | +50 | +200 |
+|---|---|---|---|---|---|
+| our vols | 72.99 | 80.19 | 82.50 | 84.76 | 91.30 |
+| minus the paper's fitted vols | -0.36 | +0.39 | +0.49 | +0.53 | +0.58 |
+
+The four scrambles agree to 0.02bp. The paper says its fit matches the
+82bp ATM quote exactly; at its parameters our pricer is 0.49bp above it.
+Fixed settings do not remove this:
+
+- The bootstrap grid moves the ATM vol by +0.49 (monthly), +0.51
+  (quarterly), +0.54 (semi-annual) and +0.59bp (annual), the wrong way.
+- The weighted bootstrap gives -0.14 at the money but -0.71 and -0.30bp
+  in the wings, and A2 rules it out on other figures.
+- Daily steps change these smiles by under 0.5bp (A2).
+
+What is consistent is the paper's own Monte-Carlo noise. Figure 11's
+legend says the fitted vols are "Model implied vol (MC)". Our pseudo-random
+fit noise (sigma +- 0.0055% at 65,536 paths) corresponds to about 0.37bp
+of ATM vol, so about 0.9bp at 10,000 paths. A fit that pins the ATM quote
+under a pricer that happens to read 0.5bp low lands exactly where the
+paper's does. The +0.49bp ATM offset converts at 0.015%/bp into
++0.0074% of sigma, which takes our 1.1905% to 1.198% against the paper's
+1.1999%. The wing offsets, a tilt of about 0.9bp, give the move in b.
+
+At the paper's parameters our gamma(30y) is 139.8bp (paper 140.3); at our
+own fit it is 135.1bp. Reproducing the paper's *parameters* would need
+their random numbers. Our fit is the noise-free fit to the same plotted
+quotes.
+
 ---
 
 ## A7. The three-parameter fit

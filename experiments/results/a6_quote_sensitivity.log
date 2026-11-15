@@ -1,0 +1,17 @@
+digitised quotes: [77.13 79.8  82.01 84.77 95.18]   paper's fitted vols: [73.35 79.8  82.01 84.23 90.72]
+  scramble 0: sigma 1.1905%  b 0.3538   [23s]
+  scramble 1: sigma 1.1905%  b 0.3531   [38s]
+  scramble 2: sigma 1.1906%  b 0.3530   [52s]
+  scramble 3: sigma 1.1906%  b 0.3532   [71s]
+1. fit: sigma 1.1905 +- 0.0000%  b 0.3533 +- 0.0004   (paper 1.1999%, 0.367)
+
+2. per +1bp in each quote (-200, -50, ATM, +50, +200):
+   sigma (%):    -0.0030 -0.0007 +0.0150 +0.0007 +0.0027
+   b:            -0.0216 -0.0051 -0.0039 +0.0049 +0.0186
+   gamma30 (bp): -3.40 -0.79 +4.41 +0.78 +2.94
+   gamma(30y) at our fit 135.09, at the paper's parameters 139.76 (paper 140.3)   [83s]
+
+3. smallest quote change (bp) that makes (1.1999%, 0.367) the fit; refit to check
+   all quotes                    : dq = -0.38 -0.09 +0.49 +0.09 +0.33  (|dq| 0.71)  -> refit sigma 1.1999%, b 0.3662   [101s]
+   hidden quotes only (-50, ATM) : dq = +0.00 -2.98 +0.49 +0.00 +0.00  (|dq| 3.02)  -> refit sigma 1.1999%, b 0.3662   [119s]
+   ATM held at 82bp              : dq = +100.82 +107.12 +0.00 +111.29 +117.25  (|dq| 218.57)  -> refit sigma 1.1989%, b 0.3597   [142s]

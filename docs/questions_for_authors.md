@@ -78,8 +78,19 @@ The text says the fit matches the at-the-money quote exactly; equal weights
 miss it by 1.9bp, so we pin it. Your stated parameters (1.1999%, the
 caption of Figure 13, and `b = 0.367`) reproduce your fitted vols to 0.7bp
 and Figure 12's gamma(30y) to 140.5 against 140.3bp, but our own fit lands
-at 1.1890% and 0.353. Were the quotes weighted, and how? (The "1.12%" in
-the text of Section 9.4 we take to be a typo, as the figures use 1.1999%.)
+at 1.1905% and 0.353 (noise-free, with quasi-random pricing). Were the
+quotes weighted, and how? (The "1.12%" in the text of Section 9.4 we take
+to be a typo, as the figures use 1.1999%.)
+
+The difference is not in the quotes: we read them off Figure 11, and
+reading errors cannot move the fit that far. It is half a basis point in
+pricing. At your parameters, our noise-free pricer gives an ATM vol of
+82.50bp, where your fit matches 82.01 exactly. Your plotted fitted vols
+are 0.4-0.6bp off ours at every strike. That is the size of one
+Monte-Carlo standard error at about 10,000 paths, and Figure 11 says the
+fit was priced by Monte Carlo. If your fit used a single run of that size,
+your (sigma, b) carries that noise. gamma(30y) moves by about 4.4bp per bp
+of ATM error: 140.3bp at your point, 135.1bp at ours.
 
 ---
 
