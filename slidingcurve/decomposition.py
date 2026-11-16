@@ -16,6 +16,8 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 
+from ._typing import ArrayLike, FloatSeq
+from .curve import Curve
 from .gaussian import A, B
 from .model import Model, Profiles
 
@@ -33,7 +35,8 @@ class Decomposition(NamedTuple):
     residual_se: jax.Array
 
 
-def decompose(profiles: Profiles, model: Model, curve, maturities) -> Decomposition:
+def decompose(profiles: Profiles, model: Model, curve: Curve,
+              maturities: ArrayLike | FloatSeq) -> Decomposition:
     """`maturities` must lie on the simulation grid (they are snapped to it)."""
     t = profiles.t
     dt = t[1] - t[0]

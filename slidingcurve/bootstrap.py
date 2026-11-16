@@ -17,10 +17,11 @@ import numpy as np
 import jax.numpy as jnp
 from scipy.optimize import least_squares
 
+from ._typing import Array
 from .curve import Curve
 
 
-def par_swap_rate(curve: Curve, tenor: float, frequency: int = 1, start: float = 0.0):
+def par_swap_rate(curve: Curve, tenor: float, frequency: int = 1, start: float = 0.0) -> Array:
     """Par rate of a swap from `start` to `start + tenor`, fixed leg paid
     `frequency` times a year: (P(start) - P(end)) / sum_i tau_i P(t_i)."""
     n = int(round(tenor * frequency))
@@ -29,7 +30,7 @@ def par_swap_rate(curve: Curve, tenor: float, frequency: int = 1, start: float =
     return (curve.discount(start) - curve.discount(pay[-1])) / ann
 
 
-def deposit_rate(curve: Curve, T: float):
+def deposit_rate(curve: Curve, T: float) -> Array:
     """Simply compounded rate to T: (1 / P(0, T) - 1) / T."""
     return (1.0 / curve.discount(T) - 1.0) / T
 
@@ -48,17 +49,19 @@ def bootstrap(swap_tenors: Sequence[float], swap_rates: Sequence[float], frequen
         raise ValueError("instrument maturities must be distinct")
     quotes = np.concatenate([dep_r, sw_r])
 
-    def build(z):
+    def build(z: np.ndarray) -> Curve:
         zs = z[order]
         x = nodes[order]
         z0 = zs[0] - (zs[1] - zs[0]) / (x[1] - x[0]) * x[0] if len(x) > 1 else zs[0]
         return Curve.from_zero_nodes(np.concatenate([[0.0], x]), np.concatenate([[z0], zs]))
 
-    def resid(z):
+    def resid(z: np.ndarray) -> np.ndarray:
         c = build(z)
         r = [float(deposit_rate(c, T)) for T in dep_t]
         r += [float(par_swap_rate(c, T, frequency)) for T in sw_t]
-        return 1e4 * (np.asarray(r) - quotes)                 # basis points
+        # numpy's stubs make the difference Any (quotes carries dtype Any); np.asarray is
+        # a no-op on an array, and it has to stay numpy because least_squares consumes it.
+        return np.asarray(1e4 * (np.asarray(r) - quotes))      # basis points
 
     # initial guess: continuously compounded equivalents of the quotes
     z0 = np.concatenate([np.log1p(dep_r * dep_t) / np.maximum(dep_t, 1e-12),

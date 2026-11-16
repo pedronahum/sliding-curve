@@ -24,12 +24,15 @@ Discretisation as in model.py: y exact for frozen volatility; the drift of x
 is the increment that keeps every benchmark yield an exact discrete P-
 martingale, M E[dx] = -(dY_f(0, t) + dGamma / 2).
 """
-from typing import NamedTuple, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any, NamedTuple
 
 import numpy as np
 import jax
 import jax.numpy as jnp
 
+from ._typing import Array, ArrayLike, FloatSeq
+from .curve import Curve
 from .gaussian import A as _A, B as _B, _quad
 from .model import variance_step
 
@@ -38,29 +41,29 @@ class MultiModel(NamedTuple):
     kappa: Sequence[float]      # mean reversions, length d
     deltas: Sequence[float]     # benchmark tenors delta_1 < ... < delta_d (delta_0 = 0)
     vols: Sequence[float]       # basis-point vols s_i of the benchmark yields
-    corr: Sequence              # d x d correlation X^Y of the benchmark yields
-    skews: Sequence[float] = None
+    corr: ArrayLike | FloatSeq  # d x d correlation X^Y of the benchmark yields
+    skews: Sequence[float] | None = None
     eta: float = 0.0
     kappa_z: float = 0.1
     vol_cap: float = 10.0
     variance_scheme: str = "qe"
 
     @property
-    def d(self):
+    def d(self) -> int:
         return len(self.kappa)
 
-    def arrays(self):
+    def arrays(self) -> tuple[Array, Array, Array, Array, Array]:
         k = jnp.asarray(self.kappa, dtype=float)
         dl = jnp.concatenate([jnp.zeros(1), jnp.asarray(self.deltas, dtype=float)])
         b = jnp.zeros(self.d) if self.skews is None else jnp.asarray(self.skews, dtype=float)
         return k, dl, jnp.asarray(self.vols, dtype=float), jnp.asarray(self.corr, dtype=float), b
 
 
-def _Bv(k, s):
+def _Bv(k: ArrayLike, s: ArrayLike) -> Array:
     return _B(k, s)
 
 
-def structure(m: MultiModel):
+def structure(m: MultiModel) -> tuple[Array, Array, Array, Array, Array]:
     """Constant matrices: M, M^-1, g_i = B(kappa, delta_i) (rows, i = 0..d),
     Delta_i and the convexity weights W^(i)."""
     k, dl, _, _, _ = m.arrays()
@@ -68,7 +71,7 @@ def structure(m: MultiModel):
     M = jnp.exp(-k[None, :] * dl[:-1, None]) * _A(k[None, :], D[:, None])
     g = _Bv(k[None, :], dl[:, None])                                   # [d+1, d]
 
-    def w_entry(kk, kl, a, b_):
+    def w_entry(kk: Array, kl: Array, a: float | Array, b_: float | Array) -> Array:
         return _quad(lambda s: jnp.exp(-kk * s) * _B(kl, s), a, b_)
 
     W = jnp.stack([jnp.stack([jnp.stack([w_entry(k[p], k[q], dl[i], dl[i + 1]) for q in range(m.d)])
@@ -76,13 +79,13 @@ def structure(m: MultiModel):
     return M, jnp.linalg.inv(M), g, D, W
 
 
-def gamma_y(y, g, D):
+def gamma_y(y: Array, g: Array, D: Array) -> Array:
     """Gamma_i(y) of (44), for y of shape [..., d, d]."""
     q = jnp.einsum("id,...de,ie->...i", g, y, g)
     return (q[..., 1:] - q[..., :-1]) / D
 
 
-def fwd_benchmarks(curve, dl, t):
+def fwd_benchmarks(curve: Curve, dl: Array, t: ArrayLike) -> Array:
     """Y_f(0, t) = (Y(0, t + delta_{i-1}, t + delta_i))_i on times t: [len(t), d]."""
     t = jnp.asarray(t, dtype=float)[:, None]
     return curve.fwd_yield(t + dl[None, :-1], t + dl[None, 1:])
@@ -96,7 +99,8 @@ class MultiProfiles(NamedTuple):
     Y: jax.Array            # [K, N+1, d]   E[Y(t)] (P-martingales)
 
 
-def simulate_multi(m: MultiModel, curve, t, ybar, key, n_paths=2**14, n_batches=16):
+def simulate_multi(m: MultiModel, curve: Curve, t: Array, ybar: ArrayLike | FloatSeq, key: Array,
+                   n_paths: int = 2**14, n_batches: int = 16) -> MultiProfiles:
     """Simulate (52) on the uniform grid t. `ybar` is [len(t), d]: the
     volatility scaling of each benchmark."""
     k, dl, s, X, b = m.arrays()
@@ -113,14 +117,16 @@ def simulate_multi(m: MultiModel, curve, t, ybar, key, n_paths=2**14, n_batches=
     half = per // 2
     ybar = jnp.asarray(ybar, dtype=float)
 
-    def fwd_at(T):                                     # f(0, T), broadcast
+    def fwd_at(T: ArrayLike) -> Array:                 # f(0, T), broadcast
         return curve.forward(T)
 
     tau_ends = jnp.stack([t[:, None] + dl[None, :-1], t[:, None] + dl[None, 1:]], 0)   # [2, N+1, d]
     f_lo, f_hi = fwd_at(tau_ends[0]), fwd_at(tau_ends[1])
     xs = (jnp.arange(t.shape[0]), Yf, dYf, ybar, f_lo, f_hi)
 
-    def step(state, inp):
+    def step(state: tuple[Array, Array, Array],
+             inp: tuple[Array, Array, Array, Array, Array, Array],
+             ) -> tuple[tuple[Array, Array, Array], tuple[Array, Array, Array, Array]]:
         x, y, z = state                                 # [K, P, d], [K, P, d, d], [K, P]
         i, yf, dyf, yb, flo, fhi = inp
         Y = yf + jnp.einsum("ij,kpj->kpi", M, x) + 0.5 * gamma_y(y, g, D)
@@ -131,7 +137,7 @@ def simulate_multi(m: MultiModel, curve, t, ybar, key, n_paths=2**14, n_batches=
         sr = jnp.einsum("ij,kpjl->kpil", Minv, SL)                                  # sigma_r'
         V = jnp.einsum("kpil,kpjl->kpij", sr, sr)
         # roll: f(t, T) = f(0, T) + sum_j e^{-kappa_j (T - t)} (x_j + (y G(t, T))_j)
-        def f_t(f0, off):
+        def f_t(f0: Array, off: Array) -> Array:
             G = _Bv(k[None, :], off[:, None])                                       # [d(window), d]
             yG = jnp.einsum("kpjl,wl->kpwj", y, G)
             e = jnp.exp(-k[None, :] * off[:, None])
@@ -151,7 +157,7 @@ def simulate_multi(m: MultiModel, curve, t, ybar, key, n_paths=2**14, n_batches=
 
     init = (jnp.zeros((n_batches, per, d)), jnp.zeros((n_batches, per, d, d)), jnp.ones((n_batches, per)))
     _, (ex, enu, eV, eY) = jax.lax.scan(step, init, xs)
-    sw = lambda a: jnp.swapaxes(a, 0, 1)
+    sw: Callable[[Array], Array] = lambda a: jnp.swapaxes(a, 0, 1)
     return MultiProfiles(t, sw(ex), sw(enu), sw(eV), sw(eY))
 
 
@@ -168,7 +174,8 @@ class MultiDecomposition(NamedTuple):
     residual_se: jax.Array
 
 
-def decompose_multi(p: MultiProfiles, m: MultiModel, curve, maturities) -> MultiDecomposition:
+def decompose_multi(p: MultiProfiles, m: MultiModel, curve: Curve,
+                    maturities: ArrayLike | FloatSeq) -> MultiDecomposition:
     """(13), (54), (55) as quadratures of the profiles (G(t, T) deterministic)."""
     k = jnp.asarray(m.kappa, dtype=float)
     t = p.t
@@ -186,28 +193,28 @@ def decompose_multi(p: MultiProfiles, m: MultiModel, curve, maturities) -> Multi
     gamma = jnp.einsum("mn,mnd,kndf,mnf->km", w, G, p.V, G) / (2.0 * T)
     res = y_eh + theta - gamma - y
     kb = p.x.shape[0]
-    mean = lambda a: jnp.mean(a, 0)
-    se = lambda a: jnp.std(a, 0, ddof=1) / jnp.sqrt(kb)
+    mean: Callable[[Array], Array] = lambda a: jnp.mean(a, 0)
+    se: Callable[[Array], Array] = lambda a: jnp.std(a, 0, ddof=1) / jnp.sqrt(kb)
     return MultiDecomposition(T, y, mean(y_eh), mean(theta), mean(gamma), mean(res),
                               se(y_eh), se(theta), se(gamma), se(res))
 
 
 # --- Gaussian closed forms (b = 0, eta = 0) -------------------------------------
 
-def gaussian_V(m: MultiModel):
+def gaussian_V(m: MultiModel) -> Array:
     """Constant sigma_r' sigma_r = M^-1 S X S M^-T with S = diag(s)."""
     _, _, s, X, _ = m.arrays()
     _, Minv, _, _, _ = structure(m)
     return Minv @ (s[:, None] * X * s[None, :]) @ Minv.T
 
 
-def gaussian_y(m: MultiModel, t):
+def gaussian_y(m: MultiModel, t: ArrayLike) -> Array:
     """y(t)_ij = V_ij B(kappa_i + kappa_j, t)."""
     k = jnp.asarray(m.kappa, dtype=float)
     return gaussian_V(m) * _Bv(k[:, None] + k[None, :], jnp.asarray(t, dtype=float))
 
 
-def gaussian_mean_x_P(m: MultiModel, curve, t):
+def gaussian_mean_x_P(m: MultiModel, curve: Curve, t: ArrayLike) -> Array:
     """E^P[x(t)] = M^-1 (Y(0) - Y_f(0, t) - Gamma(y(t)) / 2): the martingale
     condition (26) with a deterministic y."""
     _, dl, _, _, _ = m.arrays()
@@ -218,13 +225,13 @@ def gaussian_mean_x_P(m: MultiModel, curve, t):
     return jnp.einsum("ij,nj->ni", Minv, Y0[None] - Yf - 0.5 * gamma_y(yt, g, D))
 
 
-def gaussian_mean_x_fwd(m: MultiModel, t, tau):
+def gaussian_mean_x_fwd(m: MultiModel, t: ArrayLike, tau: ArrayLike) -> Array:
     """E^{Q^tau}[x(t)] = -y(t) G(t, tau), generalising (90)."""
     k = jnp.asarray(m.kappa, dtype=float)
-    return -gaussian_y(m, t) @ _Bv(k, tau - t)
+    return -gaussian_y(m, t) @ _Bv(k, jnp.asarray(tau) - jnp.asarray(t))
 
 
-def gaussian_decomposition(m: MultiModel, curve, T):
+def gaussian_decomposition(m: MultiModel, curve: Curve, T: float) -> tuple[Array, Array, Array]:
     """(Y_eh, theta, gamma) at maturity T, Gaussian case, by quadrature."""
     k = jnp.asarray(m.kappa, dtype=float)
     V = gaussian_V(m)
@@ -235,13 +242,13 @@ def gaussian_decomposition(m: MultiModel, curve, T):
 
 # --- volatility scaling: zeroth order (79) and the general bootstrap (C.3.2) -----
 
-def ybar_zeroth(m: MultiModel, curve, t):
+def ybar_zeroth(m: MultiModel, curve: Curve, t: ArrayLike) -> Array:
     """Ybar_j(t) = Y(0, t + delta_{j-1}, t + delta_j), eq. (79)."""
     _, dl, _, _, _ = m.arrays()
     return fwd_benchmarks(curve, dl, t)
 
 
-def yhat_multi(m: MultiModel, curve, t, tau):
+def yhat_multi(m: MultiModel, curve: Curve, t: ArrayLike, tau: ArrayLike) -> Array:
     """E^{Q^tau}[Y_j(t)] in the Gaussian model: [d]."""
     _, dl, _, _, _ = m.arrays()
     M, _, g, D, _ = structure(m)
@@ -249,7 +256,8 @@ def yhat_multi(m: MultiModel, curve, t, tau):
             + 0.5 * gamma_y(gaussian_y(m, t), g, D))
 
 
-def ybar_bootstrap_multi(m: MultiModel, curve, expiries, weighted=False, zeroth_mean=False):
+def ybar_bootstrap_multi(m: MultiModel, curve: Curve, expiries: ArrayLike | FloatSeq,
+                         weighted: bool = False, zeroth_mean: bool = False) -> Array:
     """General bootstrap of Appendix C.3.2 with piecewise-constant Ybar_j on
     (T_{m-1}, T_m]. For each caplet tenor i (the rate L_i on [T_m, T_m + delta_i])
     and expiry T_m,
@@ -273,27 +281,27 @@ def ybar_bootstrap_multi(m: MultiModel, curve, expiries, weighted=False, zeroth_
     Tm = np.asarray(expiries, dtype=float)
     lo = np.concatenate([[0.0], Tm[:-1]])
     K = Tm - lo
-    out = []
+    out: list[Array] = []
     for mi in range(len(Tm)):
         T = Tm[mi]
 
-        def nabla(t, i):                                   # row over j
+        def nabla(t: Any, i: int) -> Array:                # row over j
             tt = T if not weighted else t
             J = jnp.exp(-k * (T - tt)) * _A(k, dl[i + 1])
             return J @ Minv
 
-        def yhat(t, i):
+        def yhat(t: Any, i: int) -> Array:
             if zeroth_mean:
                 return fwd_benchmarks(curve, dl, jnp.atleast_1d(t))[0]
             return yhat_multi(m, curve, t, T + dl[i + 1])
 
         C = jnp.stack([nabla(T, i) * (1.0 - b) * K[mi] for i in range(d)])            # [i, j]
-        rhs = []
+        rhs_list: list[Array] = []
         for i in range(d):
             acc = sum(jnp.dot(nabla(Tm[q], i) * (1.0 - b), yhat(Tm[q], i)) * K[q] for q in range(mi + 1))
             acc = acc - sum(jnp.dot(nabla(Tm[q], i) * (1.0 - b), out[q]) * K[q] for q in range(mi))
-            rhs.append(acc)
-        rhs = jnp.stack(rhs)
+            rhs_list.append(acc)
+        rhs = jnp.stack(rhs_list)
         active = (1.0 - b) != 0.0
         # b_j = 1: the equation does not involve Ybar_j, which drops out of the model
         Ca = jnp.where(active[None, :], C, jnp.eye(d))
@@ -303,7 +311,8 @@ def ybar_bootstrap_multi(m: MultiModel, curve, expiries, weighted=False, zeroth_
     return jnp.stack(out)
 
 
-def piecewise(expiries, values, t):
+def piecewise(expiries: ArrayLike | FloatSeq, values: ArrayLike | FloatSeq,
+              t: ArrayLike) -> Array:
     Tm = jnp.asarray(expiries, dtype=float)
     idx = jnp.clip(jnp.searchsorted(Tm, jnp.asarray(t, dtype=float), side="left"), 0, Tm.shape[0] - 1)
     return jnp.asarray(values)[idx]

@@ -18,11 +18,14 @@ Appendix F: Morton's (2022) construction (99)-(101), the curve shape (106)
 for which the sliding-curve market price of risk is constant, and the
 market price of risk (107) implied by a forward curve.
 """
+from collections.abc import Callable
 from typing import NamedTuple
 
 import jax
 import jax.numpy as jnp
 
+from ._typing import Array, ArrayLike, FloatSeq
+from .curve import Curve
 from .gaussian import A, B
 from .model import Model, Profiles
 
@@ -40,7 +43,8 @@ class ForwardDecomposition(NamedTuple):
     residual_se: jax.Array
 
 
-def decompose_forward(profiles: Profiles, model: Model, curve, maturities) -> ForwardDecomposition:
+def decompose_forward(profiles: Profiles, model: Model, curve: Curve,
+                      maturities: ArrayLike | FloatSeq) -> ForwardDecomposition:
     """`maturities` are snapped to the simulation grid."""
     t = profiles.t
     dt = t[1] - t[0]
@@ -66,13 +70,13 @@ def decompose_forward(profiles: Profiles, model: Model, curve, maturities) -> Fo
 
 # --- Gaussian closed forms ------------------------------------------------------
 
-def futures_convexity(kappa, sigma, t):
+def futures_convexity(kappa: float, sigma: float, t: ArrayLike) -> Array:
     """gamma_f(t) = sigma^2 B(t)^2 / 2, eq. (105): with deterministic
     volatility, the futures-forward spread E^Q[r(t)] - f(0, t), eq. (24)."""
     return 0.5 * sigma**2 * B(kappa, t) ** 2
 
 
-def mean_x_Q(kappa, sigma, t, n=2001):
+def mean_x_Q(kappa: float, sigma: float, t: float, n: int = 2001) -> Array:
     """E^Q[x(t)] = int_0^t exp(-kappa (t - s)) y(s) ds by quadrature: the
     futures-forward spread computed from the risk-neutral dynamics (41)
     directly, independently of (105)."""
@@ -83,25 +87,26 @@ def mean_x_Q(kappa, sigma, t, n=2001):
 
 # --- Appendix F: Morton's construction ------------------------------------------
 
-def morton_futures(fwd, sigma_T, T):
+def morton_futures(fwd: Array, sigma_T: float, T: Array) -> Array:
     """Fut(T) = Fwd(T) + sigma_T^2 T^2 / 2, eq. (99)."""
     return fwd + 0.5 * sigma_T**2 * T**2
 
 
-def morton_regression(T, fut, sigma_T):
+def morton_regression(T: Array, fut: Array, sigma_T: Array) -> tuple[Array, Array]:
     """Regress Fut(T) on sigma_T T, eq. (100): returns (r_inf, xi)."""
     X = jnp.stack([jnp.ones_like(T), sigma_T * T], axis=1)
     coef, *_ = jnp.linalg.lstsq(X, fut)
     return coef[0], coef[1]
 
 
-def morton_term_premium(xi, sigma_t_fn, T, n=2001):
+def morton_term_premium(xi: float, sigma_t_fn: Callable[[Array], Array], T: float,
+                        n: int = 2001) -> Array:
     """theta^M(T) = (1/T) int_0^T xi sigma_t t dt, eq. (101)."""
     t = jnp.linspace(0.0, T, n)
     return jnp.trapezoid(xi * sigma_t_fn(t) * t, t) / T
 
 
-def constant_mpr_forward(r0, xi, kappa, sigma, T):
+def constant_mpr_forward(r0: float, xi: float, kappa: float, sigma: float, T: ArrayLike) -> Array:
     """f(0, T) = r(0) + xi sigma B(T) - sigma^2 B(T)^2 / 2, eq. (106): the
     curve for which the sliding-curve (short-rate martingale) market price of
     risk is constant and equal to xi (Proposition 17)."""
@@ -109,7 +114,7 @@ def constant_mpr_forward(r0, xi, kappa, sigma, T):
     return r0 + xi * sigma * b - 0.5 * sigma**2 * b**2
 
 
-def sliding_curve_mpr(curve, kappa, sigma, T):
+def sliding_curve_mpr(curve: Curve, kappa: float, sigma: float, T: ArrayLike) -> Array:
     """lambda(T) from eq. (107), with the martingale condition on the short
     rate: sigma lambda = g' + kappa g + sigma^2 B (1 - kappa B / 2),
     g(T) = f(0, T) - r(0)."""
@@ -117,4 +122,5 @@ def sliding_curve_mpr(curve, kappa, sigma, T):
     g = curve.forward(T) - curve.forward(0.0)
     gp = jnp.vectorize(jax.grad(lambda s: curve.forward(s)))(T)
     b = B(kappa, T)
-    return (gp + kappa * g + sigma**2 * b * (1.0 - 0.5 * kappa * b)) / sigma
+    # jnp.vectorize(jax.grad(...)) is Any in jax's stubs; jnp.asarray is a no-op on an array.
+    return jnp.asarray((gp + kappa * g + sigma**2 * b * (1.0 - 0.5 * kappa * b)) / sigma)

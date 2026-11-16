@@ -15,11 +15,12 @@ joshi_2014 -- the displaced-diffusion LIBOR market model set-up of Mark
     (caplets) that is exact. The smile is therefore a pure displaced-diffusion
     skew with no extra curvature.
 """
-from typing import NamedTuple
+from typing import Any, NamedTuple, cast
 
 import numpy as np
 import jax.numpy as jnp
 
+from ._typing import Array, ArrayLike, FloatSeq
 from . import bachelier as bl
 from .curve import Curve
 from .gaussian import _quad
@@ -47,7 +48,7 @@ class DisplacedLMM(NamedTuple):
     beta: float                 # correlation decay
     L: float = 0.0              # correlation floor
 
-    def _inst_vol(self, reset, t):
+    def _inst_vol(self, reset: float, t: Array) -> Array:
         s = reset - t
         return (self.a + self.b * s) * jnp.exp(-self.c * s) + self.d
 
@@ -69,7 +70,8 @@ class DisplacedLMM(NamedTuple):
                 var += w[i] * w[j] * f[i] * f[j] * rho * cov
         return float(np.sqrt(var / expiry) / s)
 
-    def quotes(self, expiry: float, tenor: float, strike_offsets) -> Quotes:
+    def quotes(self, expiry: float, tenor: float,
+               strike_offsets: ArrayLike | FloatSeq) -> Quotes:
         first, n = int(round(expiry / self.tau)), int(round(tenor / self.tau))
         swp = Swaption.regular(first * self.tau, n * self.tau, frequency=int(round(1 / self.tau)))
         fwd, ann = float(forward_swap_rate(self.curve, swp)), float(annuity(self.curve, swp))
@@ -100,20 +102,22 @@ _NODES = np.array([0.5, 1, 1.5, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16, 18, 20,
                    22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40])
 
 
-def paper_figures() -> dict:
+def paper_figures() -> dict[str, dict[str, Any]]:
     """Curves digitised from the paper's Figures 2, 3, 5 and 6 (basis points on
     a quarter-year maturity grid; None where one line hides another). Produced
     by tools/digitise_figures.py; accurate to roughly 0.1-0.3bp."""
     import json
     from importlib.resources import files
-    return json.loads(files("slidingcurve").joinpath("data/paper_figures_digitised.json").read_text())
+    # json.loads is Any; dict() would copy it, so cast names the two-level shape.
+    return cast(dict[str, dict[str, Any]],
+                json.loads(files("slidingcurve").joinpath("data/paper_figures_digitised.json").read_text()))
 
 
 _MARKET_NODES = np.array([0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8, 9, 10,
                           12, 14, 16, 18, 20, 22.5, 25, 27.5, 30])
 
 
-def paper_smile():
+def paper_smile() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Section 9.4 smile on the 20y x 5y yield option, read off Figure 11:
     strike offsets from at-the-money, the market's normal vols and the vols
     of the paper's own fit (all in decimal units)."""
@@ -152,7 +156,7 @@ CHOI_2017_SOURCE = (
     "USD swaptions, Reuters, 14 March 2017.")
 
 
-def choi_2017_10y10y():
+def choi_2017_10y10y() -> tuple[float, float, np.ndarray, np.ndarray, np.ndarray]:
     """Three market prices of the USD 10y x 10y swaption smile, 14 March 2017.
 
     The paper does not tabulate its market quotes (they appear only in its

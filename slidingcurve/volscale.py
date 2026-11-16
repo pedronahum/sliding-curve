@@ -1,19 +1,25 @@
 """Volatility scaling Ybar_1(t) (Appendix C.3): the centre of the local
 volatility, chosen so that changing the skew b leaves at-the-money
 volatilities of the calibration instruments (approximately) unchanged."""
+from collections.abc import Callable
+
 import numpy as np
 import jax.numpy as jnp
 
+from ._typing import Array, ArrayLike, FloatSeq
 from . import gaussian as g
+from .curve import Curve
+from .model import Model
 
 
-def ybar_zeroth(curve, delta, t):
+def ybar_zeroth(curve: Curve, delta: float, t: ArrayLike) -> Array:
     """Zeroth order: centre on the forward, Ybar(t) = Y(0, t, t + delta)."""
     t = jnp.asarray(t, dtype=float)
     return curve.fwd_yield(t, t + delta)
 
 
-def ybar_bootstrap(curve, kappa, delta, sigma, expiries, weighted=False):
+def ybar_bootstrap(curve: Curve, kappa: float, delta: float, sigma: float,
+                   expiries: ArrayLike | FloatSeq, weighted: bool = False) -> Array:
     """Bootstrap (80)-(81): piecewise-constant Ybar on (T_{m-1}, T_m].
 
     weighted=False omits the exp(kappa t) weights, the variant Section 9.1
@@ -42,7 +48,8 @@ def ybar_bootstrap(curve, kappa, delta, sigma, expiries, weighted=False):
     return (R - jnp.concatenate([jnp.zeros(1), R[:-1]])) / K
 
 
-def piecewise_constant(expiries, values, t):
+def piecewise_constant(expiries: ArrayLike | FloatSeq, values: ArrayLike | FloatSeq,
+                       t: ArrayLike) -> Array:
     """Evaluate a piecewise-constant function, left-open buckets (T_{m-1}, T_m],
     flat beyond the last expiry."""
     Tm = jnp.asarray(expiries, dtype=float)
@@ -51,7 +58,7 @@ def piecewise_constant(expiries, values, t):
     return jnp.asarray(values)[idx]
 
 
-def bootstrap_grid(horizon, per_year=12):
+def bootstrap_grid(horizon: float | Array, per_year: int = 12) -> np.ndarray:
     """Expiry grid T_m for the bootstrap: monthly by default.
 
     (81) is the rectangle-rule discretisation of the continuous condition
@@ -60,10 +67,11 @@ def bootstrap_grid(horizon, per_year=12):
     from an annual grid to semi-annual, quarterly, monthly, fortnightly and
     weekly ones (docs/investigation.md, A2). Monthly is within 0.2bp of the
     limit."""
-    return np.arange(1, int(round(per_year * horizon)) + 1) / float(per_year)
+    return np.arange(1, int(jnp.round(per_year * horizon)) + 1) / float(per_year)
 
 
-def bootstrap_fn(curve, model, expiries, weighted=False):
+def bootstrap_fn(curve: Curve, model: Model, expiries: ArrayLike | FloatSeq,
+                 weighted: bool = False) -> Callable[[ArrayLike], Array]:
     """Ybar_1 as a function of time, from the bootstrap at the model's kappa,
     delta and sigma. The scaling depends on sigma: rebuild it when sigma
     changes (calibration does so inside its objective)."""

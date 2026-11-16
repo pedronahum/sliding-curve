@@ -18,12 +18,13 @@ import numpy as np
 from scipy.stats import norm, qmc
 
 
-def bridge_plan(n):
+def bridge_plan(n: int) -> list[tuple[int, int, int | None, float, float, float]]:
     """Construction order of a Brownian bridge on n equal steps: for each new
     point (index k of W at step k, 1..n), its left and right neighbours
     already built, the interpolation weights and the conditional sd (in units
     of sqrt(dt))."""
-    plan = [(n, 0, None, 0.0, 1.0, np.sqrt(n))]          # W_n = W_0 + sqrt(n) z
+    plan: list[tuple[int, int, int | None, float, float, float]] = [
+        (n, 0, None, 0.0, 1.0, np.sqrt(n))]          # W_n = W_0 + sqrt(n) z
     queue = [(0, n)]
     while queue:
         nxt = []
@@ -38,7 +39,9 @@ def bridge_plan(n):
     return plan
 
 
-def _bridge_increments(z, plan, n):
+def _bridge_increments(z: np.ndarray,
+                       plan: list[tuple[int, int, int | None, float, float, float]],
+                       n: int) -> np.ndarray:
     """z: [n, P] standard normals in construction order -> [n, P] increments
     of a standard Brownian motion on n unit steps."""
     W = np.zeros((n + 1, z.shape[1]))
@@ -48,7 +51,8 @@ def _bridge_increments(z, plan, n):
     return np.diff(W, axis=0)
 
 
-def sobol_normals(n_steps, n_batches, per_batch, n_drivers=2, seed=0, bridge=True):
+def sobol_normals(n_steps: int, n_batches: int, per_batch: int, n_drivers: int = 2, seed: int = 0,
+                  bridge: bool = True) -> np.ndarray:
     """Standard normals of shape [n_steps, n_drivers, n_batches, per_batch]:
     the step increments of n_drivers Brownian motions divided by sqrt(dt).
 
