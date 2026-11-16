@@ -43,7 +43,8 @@ def test_forward_measure_bond_martingale(ns_curve, base_model, b, eta):
     m = base_model._replace(b=b, eta=eta)
     ybar = lambda t: volscale.ybar_zeroth(ns_curve, m.delta, t)
     T, M = 10.0, jnp.array([12.0, 15.0, 20.0])
-    x, y = pr.simulate_terminal(m, ns_curve, T, ybar, KEY, n_paths=2**15)
+    state = pr.simulate_terminal(m, ns_curve, T, ybar, KEY, n_paths=2**15)
+    x, y = state.x, state.y
     p = pr.bond(ns_curve, m.kappa, T, M[:, None], x[None, :], y[None, :])
     pairs = 0.5 * (p[:, : p.shape[1] // 2] + p[:, p.shape[1] // 2:])
     se = np.std(pairs, axis=1, ddof=1) / np.sqrt(pairs.shape[1])

@@ -46,12 +46,28 @@ mu^Y under the martingale condition) and sigma_r^2.
 Because G(t, T) is deterministic, those three profiles are all that the yield
 decomposition needs for every maturity at once (see decomposition.py).
 """
-from typing import NamedTuple
+from typing import Literal, NamedTuple, Protocol, cast, overload
 
 import jax
 import jax.numpy as jnp
 
+from ._typing import Array, ArrayLike, FloatSeq
+from .curve import Curve
 from .gaussian import A, B
+
+
+class VarianceModel(Protocol):
+    """The part of a model the variance step (46) reads: satisfied by both
+    `Model` and `multifactor.MultiModel`."""
+
+    @property
+    def eta(self) -> float: ...
+
+    @property
+    def kappa_z(self) -> float: ...
+
+    @property
+    def variance_scheme(self) -> str: ...
 
 
 class Model(NamedTuple):
@@ -66,7 +82,7 @@ class Model(NamedTuple):
     vol_scheme: str = "euler"     # "euler" (sigma_r frozen over a step) or "pc" (predictor-corrector)
 
 
-def local_vol(model: Model, y1, ybar, z):
+def local_vol(model: Model, y1: ArrayLike, ybar: ArrayLike, z: ArrayLike) -> Array:
     """Short-rate volatility sigma_r: affine local volatility in the benchmark
     yield times sqrt(z), floored at zero (the affine local vol is absorbed
     where it vanishes) and capped at vol_cap * sigma (Remark 8). Shared by the
@@ -76,7 +92,8 @@ def local_vol(model: Model, y1, ybar, z):
     return jnp.clip(jnp.sqrt(zp) * lv, 0.0, model.vol_cap * model.sigma)
 
 
-def local_vol_dx(model: Model, y1, ybar, z, A_delta):
+def local_vol_dx(model: Model, y1: ArrayLike, ybar: ArrayLike, z: ArrayLike,
+                 A_delta: ArrayLike) -> Array:
     """d sigma_r / d x (through Y_1 = ... + A(delta) x), zero where the floor
     or the cap binds. Used by the Ito correction of the predictor-corrector."""
     zp = jnp.maximum(z, 1e-12)
@@ -85,7 +102,8 @@ def local_vol_dx(model: Model, y1, ybar, z, A_delta):
     return jnp.where(active, jnp.sqrt(zp) * model.sigma * model.b * A_delta / ybar, 0.0)
 
 
-def pc_vol(model: Model, vol, vol_pred, dvol_dx, dt):
+def pc_vol(model: Model, vol: ArrayLike, vol_pred: ArrayLike, dvol_dx: ArrayLike,
+           dt: ArrayLike) -> tuple[Array, Array, Array]:
     """Predictor-corrector volatility for one step (Kloeden and Platen,
     Section 15.5, with both weights 1/2).
 
@@ -96,10 +114,13 @@ def pc_vol(model: Model, vol, vol_pred, dvol_dx, dt):
     Stratonovich integral, so -1/2 sigma_r d sigma_r / dx dt is added to keep
     it Ito (and the noise term zero-mean to leading order). The variance is
     the trapezoid of sigma_r^2."""
-    return 0.5 * (vol**2 + vol_pred**2), 0.5 * (vol + vol_pred), -0.5 * vol * dvol_dx * dt
+    # wrapped: arithmetic on ArrayLike widens to a numpy union in jax's stubs
+    return (jnp.asarray(0.5 * (vol**2 + vol_pred**2)),
+            jnp.asarray(0.5 * (vol + vol_pred)),
+            jnp.asarray(-0.5 * vol * dvol_dx * dt))
 
 
-def variance_step(model: Model, z, xi, dt):
+def variance_step(model: VarianceModel, z: ArrayLike, xi: ArrayLike, dt: ArrayLike) -> Array:
     """One step of the variance process (46). `xi` are standard normals.
 
     Both schemes match the conditional mean and variance of z exactly, so
@@ -120,7 +141,8 @@ def variance_step(model: Model, z, xi, dt):
     psi = jnp.maximum(s2 / m**2, 1e-12)
     if model.variance_scheme == "lognormal":
         s = jnp.sqrt(jnp.log1p(psi))
-        return m * jnp.exp(-0.5 * s * s + s * xi)
+        # wrapped: m carries ArrayLike arithmetic on z, which widens the product
+        return jnp.asarray(m * jnp.exp(-0.5 * s * s + s * xi))
     # quadratic branch (psi <= 1.5); arguments clamped so the untaken branch
     # stays finite under autodiff
     pq = jnp.minimum(psi, 1.5)
@@ -131,7 +153,8 @@ def variance_step(model: Model, z, xi, dt):
     p0 = (pe - 1.0) / (pe + 1.0)
     u = jnp.clip(jax.scipy.stats.norm.cdf(xi), 0.0, 1.0 - 1e-12)
     expo = jnp.where(u > p0, jnp.log((1.0 - p0) / (1.0 - u)) * m / (1.0 - p0), 0.0)
-    return jnp.where(psi <= 1.5, quad, expo)
+    # wrapped: quad/expo carry ArrayLike arithmetic, which jnp.where widens
+    return jnp.asarray(jnp.where(psi <= 1.5, quad, expo))
 
 
 class Profiles(NamedTuple):
@@ -144,12 +167,13 @@ class Profiles(NamedTuple):
     z: jax.Array
 
 
-def time_grid(t_max: float, steps_per_year: int = 12):
+def time_grid(t_max: float, steps_per_year: int = 12) -> Array:
     n = int(round(t_max * steps_per_year))
     return jnp.linspace(0.0, t_max, n + 1)
 
 
-def front_end_path(curve, delta, t, Tc, c, form: str = "exp"):
+def front_end_path(curve: Curve, delta: float, t: ArrayLike, Tc: float, c: float,
+                   form: Literal["exp", "power"] = "exp") -> Array:
     """Expected path of the benchmark yield Y_1 under the front-end blend (35),
 
         E^P[Y_1(t)] = (1 - w(t)) Y(0, 0, delta) + w(t) Y(0, t, t + delta),
@@ -166,9 +190,28 @@ def front_end_path(curve, delta, t, Tc, c, form: str = "exp"):
     return (1.0 - w) * curve.fwd_yield(0.0, delta) + w * curve.fwd_yield(t, t + delta)
 
 
-def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
-             n_batches: int = 16, antithetic: bool = True, snapshot_times=None,
-             ey_path=None, reversion=None, normals=None):
+@overload
+def simulate(model: Model, curve: Curve, t: Array, ybar: ArrayLike | FloatSeq, key: Array,
+             n_paths: int = 2**16, n_batches: int = 16, antithetic: bool = True,
+             snapshot_times: None = None, ey_path: ArrayLike | FloatSeq | None = None,
+             reversion: tuple[float, float] | None = None,
+             normals: ArrayLike | FloatSeq | None = None) -> Profiles: ...
+
+
+@overload
+def simulate(model: Model, curve: Curve, t: Array, ybar: ArrayLike | FloatSeq, key: Array,
+             n_paths: int = 2**16, n_batches: int = 16, antithetic: bool = True,
+             snapshot_times: ArrayLike | FloatSeq = ..., ey_path: ArrayLike | FloatSeq | None = None,
+             reversion: tuple[float, float] | None = None,
+             normals: ArrayLike | FloatSeq | None = None) -> tuple[Profiles, Array]: ...
+
+
+def simulate(model: Model, curve: Curve, t: Array, ybar: ArrayLike | FloatSeq, key: Array,
+             n_paths: int = 2**16, n_batches: int = 16, antithetic: bool = True,
+             snapshot_times: ArrayLike | FloatSeq | None = None,
+             ey_path: ArrayLike | FloatSeq | None = None,
+             reversion: tuple[float, float] | None = None,
+             normals: ArrayLike | FloatSeq | None = None) -> Profiles | tuple[Profiles, Array]:
     """Simulate on the uniform grid `t`; `ybar` is Ybar_1 on that grid.
 
     The P-drift makes Y_1 a martingale (26) by default. `ey_path` (values on
@@ -207,7 +250,11 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
     else:
         ey = jnp.asarray(ey_path, dtype=float)
         dey = jnp.concatenate([ey[1:] - ey[:-1], jnp.zeros(1)])   # last step unused
-        rate_ey = jnp.gradient(ey, dt)                            # central differences
+        # cast: jnp.gradient is stubbed Array | list[Array] for a general axis
+        rate_ey = cast(Array, jnp.gradient(ey, dt))               # central differences
+    a: float
+    ystar: float
+    rev_k: float | Array
     if reversion is None:
         a, ystar, rev_k = 0.0, 0.0, 0.0
     else:
@@ -229,7 +276,10 @@ def simulate(model: Model, curve, t, ybar, key, n_paths: int = 2**16,
     snap_idx = (jnp.round(jnp.asarray(snapshot_times, dtype=float) / dt).astype(int)
                 if snapshot_times is not None else jnp.zeros(0, dtype=int))
 
-    def step(state, inp):
+    def step(state: tuple[Array, Array, Array, Array],
+             inp: tuple[Array, Array, Array, Array, Array,
+                        Array, Array, Array, Array, Array],
+             ) -> tuple[tuple[Array, Array, Array, Array], Array]:
         x, y, z, snap = state
         i, f0, f0d, y0, dy0, yb, yb_next, de, rde, given = inp
         snap = jnp.where((snap_idx == i)[:, None, None], (f0 + x)[None], snap)

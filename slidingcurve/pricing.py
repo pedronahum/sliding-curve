@@ -15,40 +15,44 @@ unchanged). Bonds at expiry are explicit in the state, eq. (42), so
 A caplet on the simply compounded rate L(T, T + delta) -- the paper's
 calibration instrument -- is the one-period case.
 """
-from typing import NamedTuple
+from collections.abc import Callable
+from typing import Any, Literal, NamedTuple, cast
 
 import jax
 import jax.numpy as jnp
 
+from ._typing import Array, ArrayLike, FloatSeq, YbarFn
+from .curve import Curve
 from .gaussian import A, B
 from .model import Model, local_vol, local_vol_dx, pc_vol, variance_step
 
 
 class Swaption(NamedTuple):
     expiry: float
-    pay_times: jax.Array        # fixed-leg payment times T_1 < ... < T_n
-    accruals: jax.Array         # tau_i
+    pay_times: Array              # fixed-leg payment times T_1 < ... < T_n
+    accruals: Array               # tau_i
 
     @classmethod
-    def regular(cls, expiry, tenor, frequency=2):
+    def regular(cls, expiry: float, tenor: float, frequency: int = 2) -> "Swaption":
         n = int(round(tenor * frequency))
         return cls(float(expiry), expiry + jnp.arange(1, n + 1) / frequency,
                    jnp.full(n, 1.0 / frequency))
 
     @classmethod
-    def caplet(cls, expiry, delta):
+    def caplet(cls, expiry: float, delta: float) -> "Swaption":
         return cls(float(expiry), jnp.array([expiry + delta]), jnp.array([float(delta)]))
 
 
-def annuity(curve, swp: Swaption):
+def annuity(curve: Curve, swp: Swaption) -> Array:
     return jnp.sum(swp.accruals * curve.discount(swp.pay_times))
 
 
-def forward_swap_rate(curve, swp: Swaption):
+def forward_swap_rate(curve: Curve, swp: Swaption) -> Array:
     return (curve.discount(swp.expiry) - curve.discount(swp.pay_times[-1])) / annuity(curve, swp)
 
 
-def bond(curve, kappa, T, M, x, y):
+def bond(curve: Curve, kappa: float, T: float, M: ArrayLike, x: ArrayLike,
+         y: ArrayLike) -> Array:
     """P(T, M) as a function of the state at T, eq. (42). Broadcasts M against x."""
     g = B(kappa, M - T)
     return curve.discount(M) / curve.discount(T) * jnp.exp(-g * x - 0.5 * g * g * y)
@@ -57,7 +61,7 @@ def bond(curve, kappa, T, M, x, y):
 _PATH_DEVICES = 1
 
 
-def set_path_devices(n: int = None):
+def set_path_devices(n: int | None = None) -> int:
     """Split the paths of every pricing simulation across n devices (all
     available ones if n is None; 1 switches it off).
 
@@ -73,17 +77,41 @@ def set_path_devices(n: int = None):
     return prev
 
 
-def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
-                      steps_per_year=24, measure_maturity=None, gaussian_twin=False, normals=None):
-    """State (x, y) at `expiry` under the forward measure of `measure_maturity`
-    (the expiry itself by default).
+class GaussianTwin(NamedTuple):
+    """The b = 0, eta = 0 model with the same sigma, driven by the same
+    normals, plus the exact mean and variance of its x under this discrete
+    scheme (a linear Gaussian recursion): the control variate."""
+    x: Array
+    y: Array
+    mean_x: Array
+    var_x: Array
+
+
+class TerminalState(NamedTuple):
+    """State at the option expiry in the pricing measure.
+
+    `twin` is None unless the simulation was asked for the Gaussian twin.
+    Being a NamedTuple it still indexes and slices like the tuple it used to
+    be, but the fields are named and the length no longer depends on the
+    arguments."""
+    x: Array
+    y: Array
+    twin: GaussianTwin | None = None
+
+
+def simulate_terminal(model: Model, curve: Curve, expiry: float, ybar_fn: YbarFn, key: Array,
+                      n_paths: int = 2**15, steps_per_year: int = 24,
+                      measure_maturity: float | None = None, gaussian_twin: bool = False,
+                      normals: ArrayLike | FloatSeq | None = None) -> TerminalState:
+    """State at `expiry` under the forward measure of `measure_maturity`
+    (the expiry itself by default), as a `TerminalState`.
 
     ybar_fn(t) is the volatility scaling Ybar_1 on an array of times. Paths
     come in antithetic pairs: path i and path i + n_paths/2.
 
-    With gaussian_twin=True also returns (x_g, y_g, mean_g, var_g): the state
-    of the b = 0, eta = 0 model with the same sigma, driven by the same
-    normals, and the exact mean and variance of x_g under this discrete
+    With gaussian_twin=True, `TerminalState.twin` holds the Gaussian twin:
+    the state of the b = 0, eta = 0 model with the same sigma, driven by the
+    same normals, and the exact mean and variance of x_g under this discrete
     scheme (a linear Gaussian recursion), for use as a control variate.
 
     Paths are split across devices if set_path_devices was called.
@@ -105,7 +133,9 @@ def simulate_terminal(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
                                   measure_maturity, gaussian_twin)
 
 
-def _sharded(fn, model, curve, expiry, ybar_fn, key, n_paths, steps_per_year, measure_maturity, twin):
+def _sharded(fn: Callable[..., TerminalState], model: Model, curve: Curve, expiry: float,
+             ybar_fn: YbarFn, key: Array, n_paths: int, steps_per_year: int,
+             measure_maturity: float | None, twin: bool) -> TerminalState:
     """Run fn on n_paths / d paths per device and reassemble [first halves, second halves]."""
     import inspect
     import numpy as _np
@@ -113,30 +143,34 @@ def _sharded(fn, model, curve, expiry, ybar_fn, key, n_paths, steps_per_year, me
     try:
         from jax import shard_map
     except ImportError:                                        # older jax
-        from jax.experimental.shard_map import shard_map
+        from jax.experimental.shard_map import shard_map         # type: ignore[no-redef]
     d = _PATH_DEVICES
     if n_paths % (2 * d):
         raise ValueError(f"n_paths = {n_paths} must be a multiple of 2 x {d} devices")
     mesh = Mesh(_np.array(jax.devices()[:d]), ("paths",))
-    nocheck = {"check_vma": False} if "check_vma" in inspect.signature(shard_map).parameters else {"check_rep": False}
+    nocheck: dict[str, Any] = ({"check_vma": False}
+                               if "check_vma" in inspect.signature(shard_map).parameters
+                               else {"check_rep": False})
 
-    def local(k):
+    def local(k: Array) -> Any:
         out = fn(model, curve, expiry, ybar_fn, k[0], n_paths // d, steps_per_year, measure_maturity, twin)
         return jax.tree_util.tree_map(lambda a: a[None], out)
 
     out = shard_map(local, mesh=mesh, in_specs=P("paths"), out_specs=P("paths"), **nocheck)(
         jax.random.split(key, d))
 
-    def merge(a):
+    def merge(a: Array) -> Array:
         if a.ndim == 1:                                        # per-device scalars (twin moments): identical
             return a[0]
         h = a.shape[1] // 2
         return a.reshape(d, 2, h).transpose(1, 0, 2).reshape(-1)
-    return jax.tree_util.tree_map(merge, out)
+    return cast(TerminalState, jax.tree_util.tree_map(merge, out))
 
 
-def _simulate_terminal_one(model: Model, curve, expiry, ybar_fn, key, n_paths=2**15,
-                           steps_per_year=24, measure_maturity=None, gaussian_twin=False, normals=None):
+def _simulate_terminal_one(model: Model, curve: Curve, expiry: float, ybar_fn: YbarFn, key: Array,
+                           n_paths: int = 2**15, steps_per_year: int = 24,
+                           measure_maturity: float | None = None, gaussian_twin: bool = False,
+                           normals: ArrayLike | FloatSeq | None = None) -> TerminalState:
     """See simulate_terminal."""
     if gaussian_twin:
         if model.vol_scheme != "euler":
@@ -161,7 +195,9 @@ def _simulate_terminal_one(model: Model, curve, expiry, ybar_fn, key, n_paths=2*
     xs = (jnp.arange(n), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, tau - t),
           curve.fwd_yield(t + dt, t + dt + delta), ybar_fn(t + dt), given_xs)
 
-    def step(state, inp):
+    def step(state: tuple[Array, Array, Array],
+             inp: tuple[Array, Array, Array, Array, Array, Array, Array],
+             ) -> tuple[tuple[Array, Array, Array], None]:
         x, y, z = state
         i, y0, yb, g, y0_next, yb_next, given = inp
         y1 = y0 + Ad * x + c_y * y
@@ -185,11 +221,12 @@ def _simulate_terminal_one(model: Model, curve, expiry, ybar_fn, key, n_paths=2*
 
     init = (jnp.zeros(2 * half), jnp.zeros(2 * half), jnp.ones(2 * half))
     (x, y, _), _ = jax.lax.scan(step, init, xs)
-    return x, y
+    return TerminalState(x, y)
 
 
-def _simulate_terminal_twin(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
-                            measure_maturity):
+def _simulate_terminal_twin(model: Model, curve: Curve, expiry: float, ybar_fn: YbarFn, key: Array,
+                            n_paths: int, steps_per_year: int,
+                            measure_maturity: float | None) -> TerminalState:
     """simulate_terminal plus the Gaussian twin; same random numbers."""
     kappa, delta, sig = model.kappa, model.delta, model.sigma
     n = max(int(round(expiry * steps_per_year)), 1)
@@ -203,7 +240,9 @@ def _simulate_terminal_twin(model, curve, expiry, ybar_fn, key, n_paths, steps_p
     tau = expiry if measure_maturity is None else measure_maturity
     xs = (jnp.arange(n), curve.fwd_yield(t, t + delta), ybar_fn(t), B(kappa, tau - t))
 
-    def step(state, inp):
+    def step(state: tuple[Array, Array, Array, Array, Array, Array, Array],
+             inp: tuple[Array, Array, Array, Array],
+             ) -> tuple[tuple[Array, Array, Array, Array, Array, Array, Array], None]:
         x, y, z, xg, yg, mg, vg = state
         i, y0, yb, g = inp
         vol = local_vol(model, y0 + Ad * x + c_y * y, yb, z)
@@ -221,10 +260,11 @@ def _simulate_terminal_twin(model, curve, expiry, ybar_fn, key, n_paths, steps_p
     zero = jnp.zeros(2 * half)
     init = (zero, zero, jnp.ones(2 * half), zero, jnp.zeros(()), jnp.zeros(()), jnp.zeros(()))
     (x, y, _, xg, yg, mg, vg), _ = jax.lax.scan(step, init, xs)
-    return x, y, (xg, yg, mg, vg)
+    return TerminalState(x, y, GaussianTwin(xg, yg, mg, vg))
 
 
-def payer_payoffs(model, curve, swp: Swaption, strikes, x, y):
+def payer_payoffs(model: Model, curve: Curve, swp: Swaption, strikes: ArrayLike | FloatSeq,
+                  x: Array, y: Array) -> Array:
     """Undiscounted payoff at expiry per strike and path: [n_strikes, n_paths]."""
     p = bond(curve, model.kappa, swp.expiry, swp.pay_times[:, None], x[None, :], y[None, :])
     floating = 1.0 - p[-1]
@@ -232,20 +272,25 @@ def payer_payoffs(model, curve, swp: Swaption, strikes, x, y):
     return jnp.maximum(floating[None, :] - jnp.asarray(strikes)[:, None] * fixed[None, :], 0.0)
 
 
-def swaption_prices(model: Model, curve, swp: Swaption, strikes, ybar_fn, key,
-                    n_paths=2**15, steps_per_year=24):
+def swaption_prices(model: Model, curve: Curve, swp: Swaption, strikes: ArrayLike | FloatSeq,
+                    ybar_fn: YbarFn, key: Array, n_paths: int = 2**15,
+                    steps_per_year: int = 24) -> tuple[Array, Array]:
     """Payer swaption prices and standard errors, one per strike."""
-    x, y = simulate_terminal(model, curve, swp.expiry, ybar_fn, key, n_paths, steps_per_year)
-    pay = payer_payoffs(model, curve, swp, strikes, x, y)
+    state = simulate_terminal(model, curve, swp.expiry, ybar_fn, key, n_paths, steps_per_year)
+    pay = payer_payoffs(model, curve, swp, strikes, state.x, state.y)
     half = pay.shape[1] // 2
     pairs = 0.5 * (pay[:, :half] + pay[:, half:])             # antithetic pairs
     df = curve.discount(swp.expiry)
     return df * jnp.mean(pairs, axis=1), df * jnp.std(pairs, axis=1, ddof=1) / jnp.sqrt(half)
 
 
-def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
-                        n_paths=2**15, steps_per_year=24, strike_reference="mean",
-                        control_variate=False, normals=None):
+def yield_option_prices(model: Model, curve: Curve, expiry: float,
+                        offsets: ArrayLike | FloatSeq, ybar_fn: YbarFn, key: Array,
+                        n_paths: int = 2**15, steps_per_year: int = 24,
+                        strike_reference: Literal["mean", "forward"] = "mean",
+                        control_variate: bool = False,
+                        normals: ArrayLike | FloatSeq | None = None,
+                        ) -> tuple[Array, Array, Array]:
     """Options on the benchmark yield Y_1(T) = Y(T, T, T + delta) itself: the
     paper's "yield option" (Figures 4, 8 and 11).
 
@@ -289,7 +334,7 @@ def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
     sim = simulate_terminal(model, curve, expiry, ybar_fn, key, n_paths, steps_per_year,
                             measure_maturity=expiry + delta, gaussian_twin=control_variate,
                             normals=normals)
-    x, y = sim[0], sim[1]
+    x, y = sim.x, sim.y
     y1 = fwd + Ad * x + cy * y
     mean = jnp.mean(y1)
     off = jnp.asarray(offsets)[:, None]
@@ -297,8 +342,9 @@ def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
     pay = jnp.maximum(y1[None, :] - ref - off, 0.0)
     half = pay.shape[1] // 2
     pairs = 0.5 * (pay[:, :half] + pay[:, half:])
-    if control_variate:
-        xg, yg, mg, vg = sim[2]
+    twin = sim.twin
+    if twin is not None:
+        xg, yg, mg, vg = twin
         yg1 = fwd + Ad * xg + cy * yg
         mu_g, sd_g = fwd + Ad * mg + cy * yg, Ad * jnp.sqrt(vg)        # exact for the discrete scheme
         ref_g = jnp.mean(yg1) if strike_reference == "mean" else fwd
@@ -312,12 +358,14 @@ def yield_option_prices(model: Model, curve, expiry, offsets, ybar_fn, key,
     return mean, jnp.mean(pairs, axis=1), jnp.std(pairs, axis=1, ddof=1) / jnp.sqrt(half)
 
 
-def _bachelier_call(mean, strike, sd):
+def _bachelier_call(mean: Array, strike: Array, sd: Array) -> Array:
     d = (mean - strike) / sd
-    return (mean - strike) * jax.scipy.stats.norm.cdf(d) + sd * jax.scipy.stats.norm.pdf(d)
+    return jnp.asarray((mean - strike) * jax.scipy.stats.norm.cdf(d) + sd * jax.scipy.stats.norm.pdf(d))
 
 
-def yield_option_moneyness(curve, model, expiry, offsets, mean, strike_reference="mean"):
+def yield_option_moneyness(curve: Curve, model: Model, expiry: float,
+                           offsets: ArrayLike | FloatSeq, mean: ArrayLike,
+                           strike_reference: Literal["mean", "forward"] = "mean") -> Array:
     """Strike minus forward for inverting yield_option_prices: the offsets
     themselves for the mean reference, offsets + (Y(0,T,T+delta) - mean) for
     the forward reference."""

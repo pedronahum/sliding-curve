@@ -15,9 +15,9 @@ def test_sharded_paths_keep_antithetic_pairs_and_agree_within_monte_carlo_error(
         g = Model(0.03, 5.0, 0.012)
         fn = lambda t: volscale.ybar_zeroth(c, 5.0, t)
         n = 2**14
-        x1, _ = pr.simulate_terminal(g, c, 20.0, fn, jax.random.PRNGKey(0), n, 24, 25.0)
+        x1 = pr.simulate_terminal(g, c, 20.0, fn, jax.random.PRNGKey(0), n, 24, 25.0).x
         pr.set_path_devices(4)
-        x4, _ = pr.simulate_terminal(g, c, 20.0, fn, jax.random.PRNGKey(0), n, 24, 25.0)
+        x4 = pr.simulate_terminal(g, c, 20.0, fn, jax.random.PRNGKey(0), n, 24, 25.0).x
         # Gaussian: x_i + x_{i + n/2} is (up to the 1e-6 noise QE leaves in z at
         # eta = 0) the same number for every antithetic pair; a misaligned
         # pairing would spread it by the size of x itself (~0.05)

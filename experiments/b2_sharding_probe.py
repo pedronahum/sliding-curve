@@ -23,8 +23,8 @@ mesh = Mesh(np.array(devs), ("d",))
 
 
 def one(key):
-    x, y = pr.simulate_terminal(m, curve, 20.0, fn, key, n // len(devs), 24, 25.0)
-    return x, y
+    state = pr.simulate_terminal(m, curve, 20.0, fn, key, n // len(devs), 24, 25.0)
+    return state.x, state.y
 
 
 @jax.jit

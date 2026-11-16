@@ -26,8 +26,8 @@ def test_pc_is_euler_in_the_gaussian_case():
     b = simulate(BASE._replace(vol_scheme="pc"), CURVE, t, _ybar(BASE, t), key, n_paths=2**10)
     np.testing.assert_allclose(np.asarray(a.x), np.asarray(b.x), rtol=1e-5, atol=1e-7)
     fn = volscale.bootstrap_fn(CURVE, BASE, np.arange(1.0, 11.0))
-    xa, _ = pr.simulate_terminal(BASE, CURVE, 10.0, fn, key, 2**10)
-    xb, _ = pr.simulate_terminal(BASE._replace(vol_scheme="pc"), CURVE, 10.0, fn, key, 2**10)
+    xa = pr.simulate_terminal(BASE, CURVE, 10.0, fn, key, 2**10).x
+    xb = pr.simulate_terminal(BASE._replace(vol_scheme="pc"), CURVE, 10.0, fn, key, 2**10).x
     np.testing.assert_allclose(np.asarray(xa), np.asarray(xb), rtol=1e-5, atol=1e-7)
 
 
