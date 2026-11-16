@@ -138,6 +138,12 @@ yield; with `eta` free, use `variance_scheme="lognormal"` to keep autodiff.
 
 ## Replication of the paper
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pedronahum/sliding-curve/blob/main/notebooks/replicate_paper.ipynb)
+
+[`notebooks/replicate_paper.ipynb`](notebooks/replicate_paper.ipynb) rebuilds
+every figure of Section 9 against the paper's values and ends with a
+scorecard; it runs in a few minutes on a free Colab CPU runtime.
+
 Figures 2, 3 and 5-13 are reproduced: the Gaussian decomposition to 0.24bp
 (digitisation error), convexity to within Monte-Carlo error at low skew, the
 market-curve decomposition to the printed basis point, the skew fit to
