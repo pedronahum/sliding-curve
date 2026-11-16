@@ -38,7 +38,14 @@ Repository = "https://github.com/pedronahum/sliding-curve"
 Issues = "https://github.com/pedronahum/sliding-curve/issues"
 
 [project.optional-dependencies]
-dev = ["pytest", "matplotlib", "mypy>=1.11", "scipy-stubs>=1.18"]
+dev = [
+    "pytest",
+    "matplotlib",
+    "mypy>=1.11",
+    # scipy-stubs 1.18 needs Python >= 3.12, as does scipy 1.18 itself.
+    "scipy-stubs>=1.18; python_version >= '3.12'",
+    "scipy-stubs>=1.17; python_version < '3.12'",
+]
 
 [tool.setuptools.packages.find]
 include = ["slidingcurve*"]
