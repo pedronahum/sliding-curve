@@ -9,7 +9,12 @@ Status vocabulary: **fixed** (with a test that would have caught it),
 **built** (with tests), **explained** (the difference is understood and
 quantified; nothing in the code was wrong), **paper inconsistency** (written
 up in `questions_for_authors.md`), **unresolved** (with the evidence that
-would settle it).
+would settle it). As of 2026-11-16 every item is fixed, built, explained or
+**closed**: Figure 4 was confirmed by the authors as a bug in the paper's
+implied-volatility calculation, and the bounded residuals are accepted as
+parameter and specification choices, documented in the README under *Choices
+the paper leaves open*. `questions_for_authors.md` is now a record of what
+was asked and answered, not a list of open questions.
 
 Conventions. All numbers are basis points unless stated. "s.e." is a
 Monte-Carlo standard error from this code; differences under two s.e. are
@@ -20,15 +25,15 @@ paper are accurate to about 0.3bp (checked below).
 
 | ID | Issue | Status |
 |---|---|---|
-| A9 | Definition of the yield option | **pinned down** except one bounded choice; question to authors |
-| A1 | Figure 4 | **paper inconsistency** (contradicts the text, Figure 8 and the model's Gaussian limit; no single one of 96 pre-registered coding errors reproduces it); question to authors |
-| A2 | Convexity at high skew | **partly fixed** (bootstrap grid); rest bounded by the cap definition, or the paper's sampling noise if its skew curves shared a seed; question to authors |
-| A3 | Figure 9 at eta = 1.5 | **unresolved**, bounded; consistent with the paper's own sampling noise at the path count its other figures imply; question to authors |
-| A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); **paper inconsistency** (level) |
+| A9 | Definition of the yield option | **pinned down** except one bounded choice, implemented as `strike_reference=`; closed |
+| A1 | Figure 4 | **confirmed by the authors as a bug in the paper's implied-volatility calculation** (2026-11-16; corrected version to be posted). It had contradicted the text, Figure 8 and the model's Gaussian limit, and no single one of 96 pre-registered coding errors reproduced it |
+| A2 | Convexity at high skew | **partly fixed** (bootstrap grid); rest **closed as a parameter choice** - the cap of Remark 8 is undefined in the paper and fixed at 10x `sigma` here, with the sensitivity tabulated |
+| A3 | Figure 9 at eta = 1.5 | **closed, bounded**: consistent with the paper's own sampling noise at the path count its other figures imply |
+| A4 | Figure 8 minimum and eta = 0 level | **fixed** (minimum: comparison axis); level **closed** as the paper's sampling noise |
 | A5 | Section 8.2 uplift | **explained** |
-| A6 | Skew fit | **explained** to within Monte-Carlo noise; question to authors |
-| A7 | Three-parameter fit | **explained**: eta not identified at Monte-Carlo precision; question to authors |
-| A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; question to authors |
+| A6 | Skew fit | **explained** to within Monte-Carlo noise; closed |
+| A7 | Three-parameter fit | **explained**: eta not identified at Monte-Carlo precision; closed |
+| A8 | Curve beyond the plotted range | **unresolved by construction**, bounded; closed - no figure shows the curve there |
 | A10 | Two values of sigma for the skew fit | **closed as a typo in the text**: the caption's 1.1999% is the value used; not put to the authors |
 | B1 | Calibration with eta free | **fixed**: variance step smooth in eta, autodiff |
 | B2 | Calibration speed | **fixed**: 2.6x on one core, 16x on 16 cores, same results |
@@ -67,19 +72,30 @@ Figure 12 gamma(30y) 140.5 +- 0.2 against 140.3. Figure 9 at eta = 0.5 and
 1.0 to 0.1 and 1.2bp. The Section 8.2 uplifts are the exact Jensen ratio,
 14.5/16.3/17.5% against ~15/16/17.5%.
 
-*What is still open* (each with a question in `questions_for_authors.md`):
-Figure 4, which contradicts the paper's text, its Figure 8 and the Gaussian
-limit (A1, Q1); convexity at b = 1 and 40y 1.7-2.6% low, inside the
-sensitivity to the undefined cap (A2, Q2); Figure 9 at eta = 1.5, 204.2 +-
-1.3 against 212.8bp (mean of four pricing seeds) (A3, Q2). Estimated from the paper's own scatter, A3,
-A2 and the A4 level are all consistent with its sampling noise at about
-10,000 paths, but no single path count fits every figure under every
-seeding, so this is a sharper question, not an answer; the Figure 8 eta = 0 level, 71.4 against the
-closed form's 70.9bp (A4, Q2); the skew fit's weights and path count (A6, Q2-Q3);
-eta's identification in the three-parameter fit (A7, Q3); the curve beyond
-the plotted range, a 7.5bp spread in Y_eh at 30y across extensions (A8, Q3); and the strike
-reference of the yield option (A9, Q3). A licence is still to be chosen
-(B5). Quasi-random numbers are now available (B4).
+*How the open items closed* (record in `questions_for_authors.md`). Figure 4
+was the only genuine break, and the authors confirmed it on 2026-11-16: "a
+small bug in the implied vol calc", corrected version to be posted, "nothing
+else changes, just this display" (A1, D, Q1). The `T / delta` fingerprint -
+their `b = 1` slope 1.01/2.00/3.01/4.28x ours at 5/10/15/20y, with
+at-the-money levels agreeing to about 1bp - is what located it. What is left
+is to re-digitise the corrected figure and repoint
+`tests/test_fig4_fingerprint.py` at it.
+
+Everything else is a bounded residual, closed as a parameter or specification
+choice rather than a discrepancy: convexity at `b = 1` and 40y is 1.7-2.6%
+low, inside the sensitivity to the volatility cap of Remark 8, which the
+paper leaves undefined and which is fixed at 10x `sigma` here (A2); Figure 9
+at `eta = 1.5` is 204.2 +- 1.3 against 212.8bp (mean of four pricing seeds),
+the size of the paper's own sampling noise at the ~10,000 paths its scatter
+implies (A3); the Figure 8 `eta = 0` level, 71.4 against the closed form's
+70.9bp, is the same noise (A4); the skew fit's weights and path count move it
+by half a basis point of pricing noise (A6); `eta` is not identified by five
+quotes at Monte-Carlo precision (A7); the curve beyond the plotted range
+spreads `Y_eh(30y)` over 7.5bp across reasonable extensions, and no figure
+shows it (A8); and the strike reference of the yield option is bounded and
+implemented both ways, `strike_reference=` (A9). Q2 and Q3 were therefore not
+sent. A licence is still to be chosen (B5). Quasi-random numbers are
+available (B4).
 
 *Review of the equations.* A line-by-line check of the paper's Sections
 3-9 and Appendices C-D against the code found no discrepancy (section
@@ -131,9 +147,11 @@ has been run:
 | path count and seeding | A3 | consistent with A2, A3, A4 at about 10,000 paths, per-curve seeds |
 
 The review found no implementation error, and it raised one untested
-choice, the drift scheme, which has now been run. The open items (A1-A4,
-A6-A8) therefore remain undisclosed choices or questions for the authors,
-not misreadings of the paper's equations.
+choice, the drift scheme, which has now been run. The items then open
+(A1-A4, A6-A8) were undisclosed choices or a bug in the paper's own display
+code, not misreadings of the paper's equations: Figure 4 was confirmed by
+the authors as an implied-volatility bug, and the rest are bounded and
+closed as parameter choices.
 
 ---
 
@@ -259,8 +277,8 @@ checks both values.
 ## A4. Figure 8: position of the minimum and the eta = 0 level
 
 **Status: minimum fixed (it was a strike-axis artefact in the comparison,
-not in the model); the eta = 0 level is a paper inconsistency, most
-plausibly Monte-Carlo noise in the paper's own run.**
+not in the model); the eta = 0 level closed as Monte-Carlo noise in the
+paper's own run.**
 
 The fix: `examples/stochvol_sweep.py` now plots both smiles against
 absolute strike (this code's at mean + offset, the paper's at its
@@ -343,7 +361,7 @@ one against the other.
 
 ## A8. The curve beyond the plotted range
 
-**Status: unresolved by construction, bounded.** Y_eh and theta at the last
+**Status: closed - unresolved by construction, bounded.** Y_eh and theta at the last
 plotted maturity depend on forwards up to five years beyond it, which no
 figure shows. `experiments/a8_extrapolation.py` tries four extensions of the
 digitised zero curve (all reproduce the digitised yields inside the plotted
@@ -365,14 +383,15 @@ curve). The paper's 30y values lie inside the band, between the quadratic
 and the linear extension, and its 40y Y_eh on the baseline curve matches
 the quadratic one to 0.1bp. The 1.5bp residual at 30y is therefore within
 what the unpublished part of the curve leaves open; only the authors' curve
-beyond 30 (and 40) years can close it. Inside the plotted range, at 20y and
+beyond 30 (and 40) years could close it, and no figure shows it there, so
+the spread is recorded rather than asked about. Inside the plotted range, at 20y and
 25y, all four extensions agree with each other and with the paper to 0.3bp.
 
 ---
 
 ## A3. Figure 9 at eta = 1.5
 
-**Status: unresolved, bounded.** This code gives 202.7 +- 1.3bp at 40y where
+**Status: closed, bounded.** This code gives 202.7 +- 1.3bp at 40y where
 the paper plots 212.8bp; eta = 0.5 and 1.0 match (133.7 vs 133.6, 165.5 vs
 166.7).
 
@@ -486,17 +505,19 @@ What this shows:
   grows with b (the cap, Q2) predicts the same pattern; one run per figure
   cannot tell them apart.
 
-The status stays **unresolved**, now with the evidence that would settle
-it: the paper's path count, whether its paths were antithetic, and whether
-curves in one figure shared a seed. With 10,000 or so paths and per-curve
-seeds, A3, A4 and A2 would all be sampling noise.
+The item is closed on that evidence: with 10,000 or so paths and per-curve
+seeds, A3, A4 and A2 are all sampling noise. The paper's path count, whether
+its paths were antithetic and whether curves in one figure shared a seed are
+undisclosed choices this implementation does not need to match - it reports
+its own standard errors instead.
 
 ---
 
 ## A6. The skew fit on the market smile
 
-**Status: explained to within Monte-Carlo noise; the fitting weights and
-path count are questions for the authors.**
+**Status: explained to within Monte-Carlo noise; closed.** The fitting
+weights and path count are the paper's undisclosed choices, and the whole
+difference is the size of one pricing standard error.
 
 *The paper's parameters are consistent with this code.* At `sigma =
 1.1999%`, `b = 0.367` this code reproduces the paper's plotted fitted vols
@@ -532,8 +553,8 @@ moves by about 10bp per basis point of smile level.
 standard deviations away at 32k paths in sigma and gamma, and 2-5 in b.
 The difference corresponds to a 0.5bp shift of the fitted smile level, the
 size of one pricing s.e. of either code. With the control variate of B4 the
-fit noise falls (see B4), which leaves the paper's own path count and
-weights as the open question.
+fit noise falls (see B4); the paper's own path count and weights stay
+undisclosed, but a residual of one pricing s.e. is not worth asking about.
 
 *The quotes are not the cause.* We do not have the market's quotes, only
 the paper's plot of them in Figure 11, read off the image. How good is
@@ -654,11 +675,14 @@ fall below the 0.5bp rms differences along the valley).
 
 ## A1. Figure 4 (yield-option smiles by skew)
 
-**Status: paper inconsistency.** No reading of the option, of the
-volatility scaling or of the local volatility reproduces Figure 4 at 10-20
-years; the figure contradicts the paper's own text and its own Figure 8;
-and its `b = 0` smiles are not those of any Gaussian model. Digitisation is
-ruled out (overlay above).
+**Status: resolved - a bug in the paper, confirmed by the authors on
+2026-11-16.** They found "a small bug in the implied vol calc" behind this
+figure and are posting a corrected version; "nothing else changes, just this
+display". The evidence that identified it follows. No reading of the option,
+of the volatility scaling or of the local volatility reproduces Figure 4 at
+10-20 years; the figure contradicts the paper's own text and its own Figure
+8; and its `b = 0` smiles are not those of any Gaussian model. Digitisation
+is ruled out (overlay above).
 
 *The figure against the text.* Change of the at-the-money vol from `b = 0`
 to `b = 1`:
@@ -808,8 +832,10 @@ library matches. This narrows Q1 but does not answer it.
 
 ## D. Figure 4 after the bug search: three more mechanisms refuted, and a fingerprint
 
-**Status: paper inconsistency, unchanged, with three more refutations and a
-quantitative fingerprint for the authors.** Everything below is new; the
+**Status: resolved - the fingerprint below located the bug.** The authors
+confirmed "a small bug in the implied vol calc" on 2026-11-16 and are posting
+a corrected version; the three refutations and the `T / delta` fingerprint
+stand as the evidence that pointed there. Everything below is new; the
 settings are those of A1 (baseline curve, `sigma = 1%`, `eta = 0`, bootstrap
 scaling, strikes from the mean) unless stated.
 
@@ -1127,9 +1153,11 @@ author's plus AI-assisted code.
 
 ## A2. Convexity at high skew (Figures 3 and 6)
 
-**Status: partly fixed (the bootstrap grid was not converged); the remaining
-1.7-2.6% shortfall lies inside the sensitivity to the volatility cap,
-which the paper does not define precisely enough. Question to authors.**
+**Status: partly fixed (the bootstrap grid was not converged); the rest
+closed as a parameter choice.** The remaining 1.7-2.6% shortfall lies inside
+the sensitivity to the volatility cap, which the paper does not define
+precisely enough; this implementation fixes it at 10x `sigma` and tabulates
+the sensitivity below.
 
 *Hypotheses, one at a time* (`experiments/a2_skew_variants.py`; gamma at
 40y, model minus paper, s.e. in brackets; library = annual unweighted

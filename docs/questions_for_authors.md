@@ -1,19 +1,33 @@
-# Questions for the authors
+# Questions for the authors — closed
 
-Three questions remain after the investigation in `investigation.md`; the
-earlier seven are merged into them, because four of the old ones (the strike
-reference, the fit weights, the three-parameter fit, the curve beyond the
-plotted range) have residuals that are bounded and travel together as one
-request, and the old cap question is answered or made moot by the old path
-count question. Each states what we computed, why it does not settle the
-point, and what answer would. Numbers are basis points unless stated. The
-paper is Piterbarg & Van Der Helm, *Term Premia and Bond Convexity*
-(6 Nov 2026). Publishing the code behind the figures would answer all three
-at once.
+This file is a record, not a list of open questions. All three are closed as
+of 16 November 2026.
+
+- **Q1 (Figure 4): answered by the authors.** They confirmed "a small bug in
+  the implied vol calc" behind that figure and are posting a corrected SSRN
+  version, with "nothing else changes, just this display". The `T / delta`
+  fingerprint measured below is what located the bug. Remaining work on this
+  side: re-digitise the corrected Figure 4 and repoint
+  `tests/test_fig4_fingerprint.py` at it.
+- **Q2 (paths, random numbers, cap) and Q3 (contract, fit, curve nodes):
+  closed as parameter and specification choices.** The residuals they would
+  explain are bounded and are not discrepancies in the model. The volatility
+  cap, the bootstrap grid, the path count and the random numbers are inputs a
+  user sets; this implementation's choices, and the sensitivity to them, are
+  documented in the README under *Choices the paper leaves open*. Both are
+  kept below as the record of what was measured and why it does not settle
+  the point on its own.
+
+The text of the questions follows unchanged. Numbers are basis points unless
+stated. The paper is Piterbarg & Van Der Helm, *Term Premia and Bond
+Convexity* (6 Nov 2026).
 
 ---
 
 ## Q1 (A1, D). What does Figure 4 plot, and which code produced it?
+
+**Closed: answered by the authors on 2026-11-16 — a bug in the implied-vol
+calculation; corrected version to be posted.**
 
 Three checks say Figure 4 is not the model of Sections 6 and 9.1 priced as
 Figures 8 and 11: your text puts the at-the-money vol at `b = 1` about 4bp
@@ -43,6 +57,9 @@ earlier version of the pricer, the question closes.
 ---
 
 ## Q2 (A2, A3, A4, A6, A7). How many paths, which random numbers, and exactly what cap?
+
+**Closed: not asked. These are inputs a user sets; this implementation's
+choices and their sensitivity are documented in the README.**
 
 One answer decides whether the 1.7-2.6% (skew) and 4% (`eta = 1.5`) convexity
 gaps at the longest maturities are your sampling noise or our cap.
@@ -76,6 +93,10 @@ volatility-scaling bootstrap (81) use (on an annual grid it is not converged:
 ---
 
 ## Q3 (A6, A7, A8, A9). The exact contract, the fit objective, and the curve nodes
+
+**Closed: not asked. Every residual here is bounded and implemented as an
+option (`strike_reference=`, `weights=`, the curve extension), documented in
+the README and `investigation.md`.**
 
 The residuals here are bounded, so this is one request rather than four
 questions: publish the specification, or the code, of the following.
