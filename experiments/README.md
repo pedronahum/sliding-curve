@@ -16,3 +16,11 @@ local-volatility floors/caps and curve extensions. Scripts are named after
 the issue they address (`a9_*` for A9, and so on);
 `digitisation_overlay.py` checks the digitised figures against the paper's
 images (`pdfimages -png paper.pdf figs/f` first).
+
+The investigation these scripts served is closed: every finding is recorded
+in `../docs/investigation.md`, and what was put to the paper's authors, with
+their answer, is in `../docs/questions_for_authors.md`. The scripts are kept
+so that any number in those documents can be reproduced; nothing here is
+needed to use the library and nothing here is installed with it.
+`digitisation_overlay.py` is the one script that needs the paper's PDF
+locally, which is deliberately not in the repository.

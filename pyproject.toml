@@ -1,23 +1,61 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "slidingcurve"
-version = "0.0.1"
+version = "0.1.0"
 description = "Term premia and bond convexity under sliding-curve dynamics in a quasi-Gaussian model (JAX)"
 readme = "README.md"
 requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{name = "Pedro N. Rodriguez"}]
+keywords = [
+    "interest rates",
+    "term structure",
+    "term premia",
+    "bond convexity",
+    "quasi-Gaussian",
+    "Monte Carlo",
+    "JAX",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
 dependencies = ["jax>=0.4.30", "numpy", "scipy"]
 
+[project.urls]
+Homepage = "https://github.com/pedronahum/sliding-curve"
+Repository = "https://github.com/pedronahum/sliding-curve"
+Issues = "https://github.com/pedronahum/sliding-curve/issues"
+
 [project.optional-dependencies]
-dev = ["pytest", "matplotlib"]
+dev = ["pytest", "matplotlib", "mypy>=1.11", "scipy-stubs>=1.18"]
 
 [tool.setuptools.packages.find]
 include = ["slidingcurve*"]
 
 [tool.setuptools.package-data]
-slidingcurve = ["data/*.json"]
+slidingcurve = ["data/*.json", "py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["slidingcurve"]
+disallow_untyped_defs = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_reexport = true
+strict_equality = true
